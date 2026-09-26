@@ -35,15 +35,93 @@ Built with **React Native** and **Expo Router**, targeting Android and iOS. Stat
 - **Practice** — daily scam/legit drills plus an AI message-checker input
 - **Profile** — badges, certificate, language switch
 
-### Running it
+## Getting started
+
+### Prerequisites
+
+Install these before you clone the repo:
+
+| Tool | Version | Notes |
+|---|---|---|
+| [Node.js](https://nodejs.org/) | 20 LTS or newer | Includes `npm` |
+| [Git](https://git-scm.com/) | any recent version | To clone the repo |
+| [Expo Go](https://expo.dev/go) | latest | Free app on your phone — **App Store** (iOS) or **Play Store** (Android). This is how you'll run and test the app without installing Android Studio/Xcode. |
+
+Your phone and your computer must be on the **same Wi-Fi network** for the QR code method below to work.
+
+### Dependencies
+
+Nothing to install manually beyond `npm install` — everything below comes from [`mobile-app/package.json`](mobile-app/package.json) and is fetched automatically. Listed here for reference:
+
+**Framework**
+- `expo`, `expo-router` — app framework and file-based navigation
+- `react`, `react-native`, `react-dom`, `react-native-web`
+
+**Navigation** (used internally by Expo Router)
+- `@react-navigation/native`, `@react-navigation/native-stack`, `@react-navigation/bottom-tabs`
+- `react-native-screens`, `react-native-safe-area-context`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-worklets`
+
+**Backend (Supabase — wiring in progress)**
+- `@supabase/supabase-js`, `react-native-url-polyfill`
+- `@react-native-async-storage/async-storage`, `expo-secure-store`
+
+**Multilingual (English / isiZulu / Sepedi / Xitsonga)**
+- `i18next`, `react-i18next`, `expo-localization`
+
+**UI / design**
+- `react-native-paper` — component library
+- `@expo/vector-icons` — icon set
+- `@expo-google-fonts/archivo`, `expo-font` — brand typeface
+- `expo-image`, `expo-glass-effect`, `expo-symbols`, `expo-system-ui`, `expo-splash-screen`, `expo-status-bar`
+
+**State & forms**
+- `zustand` — app state (persisted with AsyncStorage)
+- `react-hook-form`, `zod` — forms and validation
+
+**Media**
+- `expo-video`, `expo-audio`, `expo-asset` — for AI-assisted lesson videos/audio
+
+**Other Expo modules**
+- `expo-constants`, `expo-device`, `expo-linking`, `expo-web-browser`, `@expo/ui`
+
+**Dev tools**
+- `typescript`, `eslint`, `eslint-config-expo`, `@types/react`
+
+### Clone and install
 
 ```bash
-cd mobile-app
+git clone https://github.com/phetho5/CybersecurityOnlineModules.git
+cd CybersecurityOnlineModules/mobile-app
 npm install
-npx expo start
 ```
 
-Scan the QR code with the Expo Go app (Android/iOS), or press `a` / `i` for an emulator/simulator.
+### Run and test the app on your phone
+
+1. **Install Expo Go** on your phone from the App Store (iOS) or Play Store (Android), if you haven't already.
+2. **Connect your phone to the same Wi-Fi network** as your computer.
+3. From the `mobile-app` folder, start the dev server:
+   ```bash
+   npx expo start
+   ```
+4. A QR code appears in the terminal (and opens in a browser tab).
+5. **Scan it:**
+   - **Android:** open Expo Go and use its built-in QR scanner.
+   - **iPhone:** open the Camera app and point it at the QR code, then tap the notification that appears.
+6. The app builds and loads on your phone — this can take a minute the first time.
+7. **Try the flow:**
+   - Pick a language on the first screen (English / isiZulu / Sepedi / Xitsonga) and confirm the interface text updates.
+   - On **Home**, tap **Continue lesson** to open the interactive scenario, or tap any module card.
+   - Inside a **Module**, tap a lesson row to open the scenario, then tap **Take the assessment**.
+   - Complete the **Lesson** (tap the red flags, check your answer), then the 3-question **Assessment**.
+   - Confirm the **Result** screen shows a score and, if you passed, a badge.
+   - Check the **Practice** tab (daily scam/legit drills) and the **Profile** tab (badges, certificate, language switcher).
+8. To reload after making code changes, save the file — Expo Go refreshes automatically (Fast Refresh). If something looks broken, shake your phone (or press `r` in the terminal) to reload manually.
+
+**Alternative — run in an emulator/simulator instead of a physical phone** (requires Android Studio or Xcode to already be installed):
+```bash
+npx expo start
+# then press "a" for Android emulator, or "i" for iOS simulator
+```
 
 ### Project structure
 
