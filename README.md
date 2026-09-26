@@ -17,7 +17,6 @@ The full research proposal is in [`MashambaVS__EloffJ.pdf`](MashambaVS__EloffJ.p
 | Path | Description |
 |---|---|
 | [`MashambaVS__EloffJ.pdf`](MashambaVS__EloffJ.pdf) | COS700 research proposal |
-| [`Cyber Aware Mobile LMS (offline).html`](Cyber%20Aware%20Mobile%20LMS%20(offline).html) | Early standalone design prototype (single-file, no build step) |
 | [`mobile-app/`](mobile-app) | The React Native / Expo mobile app |
 
 ## Mobile app
