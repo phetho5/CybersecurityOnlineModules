@@ -7,8 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { PrimaryButton } from '@/components/primary-button';
 import { Colors, Fonts, Radii, Spacing } from '@/constants/theme';
+import { BADGES, MODULE_BADGE_ID } from '@/data/badges';
 import { getModule } from '@/data/modules';
-import { PASS_MARK, QUESTIONS } from '@/data/quiz';
+import { PASS_MARK } from '@/data/quiz';
+import type { LanguageCode } from '@/i18n';
+import { scoreQuiz } from '@/lib/scoring';
+import { recordQuizAttempt } from '@/lib/sync';
+import { getModuleFinalAssessment } from '@/lib/topic-source';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function ResultScreen() {
@@ -16,23 +21,29 @@ export default function ResultScreen() {
   const { t } = useTranslation();
   const answers = useAppStore((s) => s.quizAnswers);
   const completeModule = useAppStore((s) => s.completeModule);
+  const userId = useAppStore((s) => s.userId);
+  const language = (useAppStore((s) => s.language) ?? 'en') as LanguageCode;
   const mod = getModule(id ?? '');
+  const badgeId = mod ? MODULE_BADGE_ID[mod.id] : undefined;
 
-  const correctCount = QUESTIONS.filter((q, i) => answers[i] === q.correct).length;
-  const scorePct = Math.round((correctCount / QUESTIONS.length) * 100);
-  const passed = scorePct >= PASS_MARK;
-
-  const breakdown = QUESTIONS.map((q, i) => ({
-    area: q.area,
-    correct: answers[i] === q.correct,
-  }));
+  const questions = getModuleFinalAssessment(mod?.id ?? '', language) ?? [];
+  const { correctCount, scorePct, passed, breakdown } = scoreQuiz(questions, answers, PASS_MARK);
+  const badge = BADGES.find((b) => b.id === badgeId);
 
   useEffect(() => {
     if (passed && mod) {
-      completeModule(mod.id, mod.id === '02' ? 'scam-spotter' : undefined);
+      completeModule(mod.id, badgeId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passed]);
+
+  useEffect(() => {
+    if (mod) {
+      void recordQuizAttempt(userId, mod.id, scorePct, passed);
+    }
+    // Every mount is a fresh attempt (assessment reset happens on entering the quiz screen).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!mod) return null;
 
@@ -41,35 +52,35 @@ export default function ResultScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Text style={styles.heroKicker}>
-            {t('assessment')} · Module {mod.id}
+            {t('assessment')} · {t('moduleLabel')} {mod.id}
           </Text>
           <Text style={styles.heroScore}>{scorePct}%</Text>
           <Text style={styles.heroHeadline}>{passed ? t('passedHeadline') : t('failedHeadline')}</Text>
           <Text style={styles.heroLine}>
-            {correctCount} of {QUESTIONS.length} correct · {t('passMark')}
+            {t('correctOfTotal', { correct: correctCount, total: questions.length })} · {t('passMark')}
           </Text>
           <Text style={styles.heroSub}>
             {passed
-              ? 'You can identify fake bank alerts on WhatsApp and know where to report them. Review anything marked below before the next module.'
-              : 'You need 70% to earn the badge. Redo the lessons for the topics marked in red, then retake the assessment.'}
+              ? t('passedBody', { module: t(`moduleTitle_${mod.id}`, { defaultValue: mod.title }) })
+              : t('failedBody')}
           </Text>
         </View>
 
-        {passed && (
+        {passed && badge && (
           <View style={styles.badgeRow}>
             <View style={styles.badgeIcon}>
               <Icon name="ribbon" size={28} color={Colors.text} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.badgeKicker}>{t('badgeEarned')}</Text>
-              <Text style={styles.badgeName}>Scam Spotter — WhatsApp</Text>
-              <Text style={styles.badgeMeta}>Issued 26 Sep 2026 · verifiable</Text>
+              <Text style={styles.badgeName}>{t(`badgeName_${badge.id}`, { defaultValue: badge.name })}</Text>
+              <Text style={styles.badgeMeta}>{t('badgeVerifiable')}</Text>
             </View>
           </View>
         )}
 
         <View style={styles.breakdownSection}>
-          <Text style={styles.breakdownTitle}>Marks by topic</Text>
+          <Text style={styles.breakdownTitle}>{t('marksByTopic')}</Text>
           {breakdown.map((row, i) => (
             <View key={i} style={styles.breakdownRow}>
               <Text style={styles.breakdownArea}>{row.area}</Text>
@@ -86,7 +97,9 @@ export default function ResultScreen() {
             <PrimaryButton
               label={passed ? t('backToModules') : t('retakeAssessment')}
               variant="secondary"
-              onPress={() => (passed ? router.replace('/(tabs)/home') : router.replace(`/quiz/${mod.id}`))}
+              onPress={() =>
+                passed ? router.replace('/(tabs)/home') : router.replace(`/quiz/${mod.id}/${mod.lessonCount}`)
+              }
             />
           </View>
         </View>

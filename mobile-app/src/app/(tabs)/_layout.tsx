@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { Icon } from '@/components/icon';
 import { Colors, Fonts } from '@/constants/theme';
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -28,26 +30,26 @@ export default function TabsLayout() {
       }}>
       <Tabs.Screen
         name="home"
-        options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Icon name="home" color={color} size={size} /> }}
+        options={{ title: t('home'), tabBarIcon: ({ color, size }) => <Icon name="home" color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="modules"
         options={{
-          title: 'Modules',
+          title: t('modules'),
           tabBarIcon: ({ color, size }) => <Icon name="layers" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="practice"
         options={{
-          title: 'Practice',
+          title: t('practiceTab'),
           tabBarIcon: ({ color, size }) => <Icon name="shield-checkmark" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
           tabBarIcon: ({ color, size }) => <Icon name="person-circle" color={color} size={size} />,
         }}
       />

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
@@ -13,10 +14,11 @@ export function ScreenHeader({
   onBack?: () => void;
   right?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.row}>
       <Pressable
-        accessibilityLabel="Back"
+        accessibilityLabel={t('back')}
         onPress={onBack ?? (() => router.back())}
         style={styles.iconButton}
         hitSlop={8}>

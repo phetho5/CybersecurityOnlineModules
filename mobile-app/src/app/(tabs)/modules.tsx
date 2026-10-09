@@ -16,7 +16,7 @@ export default function ModulesScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('modules')}</Text>
-        <Text style={styles.subtitle}>South African-context cybersecurity tracks, in your language.</Text>
+        <Text style={styles.subtitle}>{t('modulesSubtitle')}</Text>
       </View>
       <View style={styles.rule} />
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>

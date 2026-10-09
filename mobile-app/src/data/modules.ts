@@ -3,14 +3,20 @@ export type ModuleDef = {
   title: string;
   lessonCount: number;
   minutes: number;
+  /** A single video covering the whole module, shown on the module detail screen above the lesson list. */
+  overviewVideoUrl?: string;
 };
 
 export const MODULES: ModuleDef[] = [
-  { id: '01', title: 'POPIA & Your Personal Data', lessonCount: 4, minutes: 25 },
-  { id: '02', title: 'WhatsApp Scams in South Africa', lessonCount: 5, minutes: 30 },
-  { id: '03', title: 'SMS & Delivery Scams', lessonCount: 4, minutes: 20 },
-  { id: '04', title: 'Email Phishing at University', lessonCount: 6, minutes: 35 },
-  { id: '05', title: 'The Cybercrimes Act', lessonCount: 3, minutes: 18 },
+  { id: '01', title: 'POPIA & Your Personal Data', lessonCount: 3, minutes: 18 },
+  {
+    id: '02',
+    title: 'Online Scams',
+    lessonCount: 9,
+    minutes: 54,
+    overviewVideoUrl: 'https://rihrkegrzlmlllldbpfl.supabase.co/storage/v1/object/public/lesson-media/LESSON.mp4',
+  },
+  { id: '03', title: 'Digital Privacy', lessonCount: 2, minutes: 16 },
 ];
 
 export function getModule(id: string): ModuleDef | undefined {

@@ -8,8 +8,8 @@ import { ModuleCard } from '@/components/module-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { Colors, Fonts, Radii, Spacing } from '@/constants/theme';
 import { MODULES } from '@/data/modules';
-import { getScenarioText } from '@/data/scenario';
 import { LANGUAGE_META, type LanguageCode } from '@/i18n';
+import { getContinueLesson } from '@/lib/continue-lesson';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function HomeScreen() {
@@ -22,14 +22,14 @@ export default function HomeScreen() {
   const overall = Math.round(
     MODULES.reduce((sum, m) => sum + (moduleProgress[m.id] ?? 0), 0) / MODULES.length
   );
+  const continueLesson = getContinueLesson(moduleProgress, language);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.kicker}>{t('greeting')}</Text>
-            <Text style={styles.name}>Vhulenda</Text>
+            <Text style={styles.name}>{t('greeting')}</Text>
           </View>
           <Pressable style={styles.langPill} onPress={() => router.push('/language')}>
             <Text style={styles.langPillText}>{LANGUAGE_META[language].code}</Text>
@@ -43,15 +43,27 @@ export default function HomeScreen() {
           <Stat value={`${overall}%`} label={t('complete')} accent />
         </View>
 
-        <View style={styles.continueCard}>
-          <Text style={styles.continueKicker}>{t('continueLearning')}</Text>
-          <Text style={styles.continueTitle}>{getScenarioText(language).lesson}</Text>
-          <Text style={styles.continueMeta}>Module 02 · Lesson 2 of 5 · 6 min</Text>
-          <Pressable style={styles.continueButton} onPress={() => router.push('/lesson/02')}>
-            <Text style={styles.continueButtonText}>{t('continue')}</Text>
-            <Icon name="arrow-forward" size={18} color={Colors.accent700} />
-          </Pressable>
-        </View>
+        {continueLesson ? (
+          <View style={styles.continueCard}>
+            <Text style={styles.continueKicker}>{t('continueLearning')}</Text>
+            <Text style={styles.continueTitle}>{continueLesson.lessonTitle}</Text>
+            <Text style={styles.continueMeta}>
+              {t(`moduleTitle_${continueLesson.moduleId}`)} · {continueLesson.lessonN} {t('of')} {continueLesson.lessonCount} ·{' '}
+              {continueLesson.minutes} {t('min')}
+            </Text>
+            <Pressable
+              style={styles.continueButton}
+              onPress={() => router.push(`/lesson/${continueLesson.moduleId}/${continueLesson.lessonN}`)}>
+              <Text style={styles.continueButtonText}>{t('continue')}</Text>
+              <Icon name="arrow-forward" size={18} color={Colors.accent700} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.continueCard}>
+            <Text style={styles.continueKicker}>{t('continueLearning')}</Text>
+            <Text style={styles.continueTitle}>{t('allModulesComplete')}</Text>
+          </View>
+        )}
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>{t('modules')}</Text>
@@ -70,11 +82,9 @@ export default function HomeScreen() {
 
         <View style={styles.aiCard}>
           <Text style={styles.aiKicker}>{t('aiTutor')}</Text>
-          <Text style={styles.aiBody}>
-            Paste any suspicious SMS, WhatsApp or email and the tutor explains the red flags in your language.
-          </Text>
+          <Text style={styles.aiBody}>{t('aiTutorBody')}</Text>
           <PrimaryButton
-            label={t('checkMessage')}
+            label={t('practice')}
             variant="secondary"
             onPress={() => router.push('/(tabs)/practice')}
           />

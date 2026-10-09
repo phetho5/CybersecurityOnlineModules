@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,13 +17,15 @@ export default function QuizScreen() {
   const answers = useAppStore((s) => s.quizAnswers);
   const answerQuestion = useAppStore((s) => s.answerQuestion);
   const resetQuiz = useAppStore((s) => s.resetQuiz);
+  // The displayed question is its own state, advanced only by an explicit "Next question" tap —
+  // it must not be derived from how many questions have been answered so far, or answering a
+  // question instantly jumps to the next one before its feedback ever gets a chance to render.
+  const [qi, setQi] = useState(0);
 
   useEffect(() => {
     resetQuiz();
   }, [resetQuiz]);
 
-  const answeredCount = Object.keys(answers).length;
-  const qi = Math.min(answeredCount < QUESTIONS.length ? answeredCount : QUESTIONS.length - 1, QUESTIONS.length - 1);
   const question = QUESTIONS[qi];
   const answer = answers[qi];
   const answered = answer !== undefined;
@@ -36,6 +38,8 @@ export default function QuizScreen() {
   function next() {
     if (qi + 1 >= QUESTIONS.length) {
       router.replace(`/result/${id}`);
+    } else {
+      setQi(qi + 1);
     }
   }
 

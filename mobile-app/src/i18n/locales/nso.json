@@ -14,8 +14,6 @@
   "takeAssessment": "Dira tekolo",
   "scenario": "Seemo",
   "tapRedFlags": "Kgotla matshwao ka moka a bofora",
-  "checkMyAnswer": "Check my answer",
-  "nextLesson": "Next lesson",
   "assessment": "Tekolo",
   "badgeEarned": "Ponagalo e hweditšwe",
   "viewCertificate": "Lebelela setifikeiti",
@@ -28,17 +26,5 @@
   "download": "Laolla PDF",
   "home": "Gae",
   "profile": "Profaele",
-  "passMark": "pass mark 70%",
-  "question": "Question",
-  "of": "of",
-  "nextQuestion": "Next question",
-  "seeMyResult": "See my result",
-  "passedHeadline": "Passed — badge issued",
-  "failedHeadline": "Not passed — one more attempt today",
-  "retakeAssessment": "Retake the assessment",
-  "backToModulesShort": "Boela dithutong",
-  "lessons": "lessons",
-  "min": "min",
-  "correct": "Correct",
-  "notQuite": "Not quite"
+  "backToModulesShort": "Boela dithutong"
 }

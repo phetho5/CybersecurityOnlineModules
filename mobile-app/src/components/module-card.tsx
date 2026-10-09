@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
@@ -14,6 +15,7 @@ export function ModuleCard({
   pct: number;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const complete = pct >= 100;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
@@ -22,10 +24,10 @@ export function ModuleCard({
       </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>
-          {module.title}
+          {t(`moduleTitle_${module.id}`, { defaultValue: module.title })}
         </Text>
         <Text style={styles.meta}>
-          {module.lessonCount} lessons · {module.minutes} min
+          {module.lessonCount} {t('lessons')} · {module.minutes} {t('min')}
         </Text>
         <View style={styles.progressRow}>
           <ProgressBar pct={pct} />

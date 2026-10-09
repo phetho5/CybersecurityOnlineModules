@@ -14,8 +14,6 @@
   "takeAssessment": "Teka xikambelo",
   "scenario": "Xiyimo",
   "tapRedFlags": "Khumba swikombiso hinkwaswo swa vukanganyisi",
-  "checkMyAnswer": "Check my answer",
-  "nextLesson": "Next lesson",
   "assessment": "Xikambelo",
   "badgeEarned": "Xikombiso xi kumiwile",
   "viewCertificate": "Vona xitifikheti",
@@ -28,17 +26,5 @@
   "download": "Tsakela PDF",
   "home": "Kaya",
   "profile": "Profayili",
-  "passMark": "pass mark 70%",
-  "question": "Question",
-  "of": "of",
-  "nextQuestion": "Next question",
-  "seeMyResult": "See my result",
-  "passedHeadline": "Passed — badge issued",
-  "failedHeadline": "Not passed — one more attempt today",
-  "retakeAssessment": "Retake the assessment",
-  "backToModulesShort": "Tlhelela eka tidyondzo",
-  "lessons": "lessons",
-  "min": "min",
-  "correct": "Correct",
-  "notQuite": "Not quite"
+  "backToModulesShort": "Tlhelela eka tidyondzo"
 }

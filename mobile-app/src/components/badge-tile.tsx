@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
@@ -5,13 +6,14 @@ import { Colors, Fonts, Radii, Spacing } from '@/constants/theme';
 import type { Badge } from '@/data/badges';
 
 export function BadgeTile({ badge }: { badge: Badge }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.tile, { opacity: badge.earned ? 1 : 0.38 }]}>
       <View style={[styles.iconWrap, badge.earned && styles.iconWrapEarned]}>
         <Icon name={badge.icon} size={22} color={badge.earned ? Colors.accent700 : Colors.neutral600} />
       </View>
       <Text style={styles.name} numberOfLines={2}>
-        {badge.name}
+        {t(`badgeName_${badge.id}`, { defaultValue: badge.name })}
       </Text>
     </View>
   );

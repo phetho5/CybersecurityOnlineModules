@@ -9,6 +9,8 @@ import { BADGES } from '@/data/badges';
 import { LANGUAGE_META, SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
 import { useAppStore } from '@/store/useAppStore';
 
+const ONLINE_SCAMS_BADGE_ID = 'scam-spotter';
+
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const language = (useAppStore((s) => s.language) ?? 'en') as LanguageCode;
@@ -23,8 +25,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.name}>Vhulenda Mashamba</Text>
-          <Text style={styles.studentMeta}>u22554883 · BSc Computer Science</Text>
+          <Text style={styles.name}>{t('profile')}</Text>
           <View style={styles.rule} />
         </View>
 
@@ -42,14 +43,18 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('certificate')}</Text>
-          <View style={styles.certificateCard}>
-            <Text style={styles.certKicker}>CyberAware SA</Text>
-            <Text style={styles.certTitle}>Certificate of Completion</Text>
-            <Text style={styles.certBody}>
-              Awarded for passing the South African Online Scams track at 82%.
-            </Text>
-            <PrimaryButton label={t('download')} variant="secondary" onPress={() => {}} />
-          </View>
+          {earnedBadgeIds.includes(ONLINE_SCAMS_BADGE_ID) ? (
+            <View style={styles.certificateCard}>
+              <Text style={styles.certKicker}>CyberAware SA</Text>
+              <Text style={styles.certTitle}>{t('certificateTitle')}</Text>
+              <Text style={styles.certBody}>{t('certificateBody', { module: t('moduleTitle_02') })}</Text>
+              <PrimaryButton label={t('download')} variant="secondary" disabled onPress={() => {}} />
+            </View>
+          ) : (
+            <View style={styles.certificateEmpty}>
+              <Text style={styles.certBody}>{t('certificateEmpty')}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -66,7 +71,7 @@ export default function ProfileScreen() {
                     {LANGUAGE_META[code].name}
                   </Text>
                   <Text style={[styles.langState, selected && styles.langNameSelected]}>
-                    {selected ? 'Selected' : 'Switch'}
+                    {selected ? t('languageSelected') : t('languageSwitch')}
                   </Text>
                 </Pressable>
               );
@@ -83,14 +88,6 @@ const styles = StyleSheet.create({
   content: { paddingBottom: Spacing.xxl },
   header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
   name: { fontFamily: Fonts.heading, fontWeight: '800', fontSize: 26, color: Colors.text },
-  studentMeta: {
-    fontFamily: Fonts.bodyMedium,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: Colors.textMuted,
-    marginTop: 6,
-  },
   rule: { height: 2, backgroundColor: Colors.text, marginTop: Spacing.md },
   section: { padding: Spacing.lg, borderBottomWidth: 2, borderBottomColor: Colors.divider, gap: Spacing.sm },
   sectionTitle: {
@@ -107,6 +104,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.text,
     padding: Spacing.md,
     gap: Spacing.xs,
+  },
+  certificateEmpty: {
+    borderWidth: 2,
+    borderColor: Colors.divider,
+    borderStyle: 'dashed',
+    borderRadius: Spacing.xs,
+    padding: Spacing.md,
   },
   certKicker: {
     fontFamily: Fonts.heading,

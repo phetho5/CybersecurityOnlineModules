@@ -4,39 +4,26 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
-import { PrimaryButton } from '@/components/primary-button';
 import { ScreenHeader } from '@/components/screen-header';
+import { VideoPlayer } from '@/components/video-player';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
+import { MODULE_BADGE_ID } from '@/data/badges';
 import { getLessonProgress } from '@/data/lessons';
 import { getModule } from '@/data/modules';
+import type { LanguageCode } from '@/i18n';
 import { useAppStore } from '@/store/useAppStore';
-
-const MODULE_TAG: Record<string, string> = {
-  '01': 'Data privacy',
-  '02': 'Local scams',
-  '03': 'Local scams',
-  '04': 'Phishing',
-  '05': 'Cyber law',
-};
-
-const MODULE_INTRO: Record<string, string> = {
-  '01': 'Understand what POPIA protects, when consent is required, and how to report unlawful use of your data.',
-  '02': 'Spot the fake bank alert, the "mom I lost my phone" request, and the job offer that asks for a R150 registration fee.',
-  '03': 'Recognise re-delivery fee scams and OTP fraud sent by SMS, and know what to do before you tap a link.',
-  '04': 'Tell a spoofed university domain from the real thing, and learn why legitimate mail never needs a link.',
-  '05': 'Know the key offences under the Cybercrimes Act and where to report an incident in South Africa.',
-};
 
 export default function ModuleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const moduleProgress = useAppStore((s) => s.moduleProgress);
+  const language = (useAppStore((s) => s.language) ?? 'en') as LanguageCode;
   const mod = getModule(id ?? '');
 
   if (!mod) return null;
 
   const pct = moduleProgress[mod.id] ?? 0;
-  const lessons = getLessonProgress(mod.id, pct, mod.lessonCount);
+  const lessons = getLessonProgress(mod.id, pct, mod.lessonCount, language);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -44,10 +31,10 @@ export default function ModuleScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
           <View style={styles.tag}>
-            <Text style={styles.tagText}>{MODULE_TAG[mod.id]}</Text>
+            <Text style={styles.tagText}>{t(`moduleTag_${mod.id}`)}</Text>
           </View>
-          <Text style={styles.title}>{mod.title}</Text>
-          <Text style={styles.description}>{MODULE_INTRO[mod.id]}</Text>
+          <Text style={styles.title}>{t(`moduleTitle_${mod.id}`, { defaultValue: mod.title })}</Text>
+          <Text style={styles.description}>{t(`moduleIntro_${mod.id}`)}</Text>
           <View style={styles.metaRow}>
             <Text style={styles.metaItem}>
               {mod.lessonCount} {t('lessons')}
@@ -55,15 +42,21 @@ export default function ModuleScreen() {
             <Text style={styles.metaItem}>
               {mod.minutes} {t('min')}
             </Text>
-            <Text style={styles.metaItem}>Badge on pass</Text>
+            {MODULE_BADGE_ID[mod.id] && <Text style={styles.metaItem}>{t('badgeOnPass')}</Text>}
           </View>
         </View>
+
+        {mod.overviewVideoUrl && (
+          <View style={styles.overviewVideoWrap}>
+            <VideoPlayer source={mod.overviewVideoUrl} />
+          </View>
+        )}
 
         <View style={styles.lessonRail}>
           {lessons.map((lesson) => (
             <Pressable
               key={lesson.n}
-              onPress={() => router.push(`/lesson/${mod.id}`)}
+              onPress={() => router.push(`/lesson/${mod.id}/${lesson.n}`)}
               style={({ pressed }) => [
                 styles.lessonRow,
                 lesson.status === 'in-progress' && styles.lessonRowActive,
@@ -83,18 +76,17 @@ export default function ModuleScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.lessonTitle}>{lesson.title}</Text>
                 <Text style={styles.lessonMeta}>
-                  {lesson.status === 'done' ? 'Done · ' : lesson.status === 'in-progress' ? 'In progress · ' : ''}
+                  {lesson.status === 'done'
+                    ? `${t('lessonDone')} · `
+                    : lesson.status === 'in-progress'
+                      ? `${t('lessonInProgress')} · `
+                      : ''}
                   {lesson.minutes} {t('min')}
                 </Text>
               </View>
               <Icon name="chevron-forward" size={16} color={Colors.neutral600} />
             </Pressable>
           ))}
-        </View>
-
-        <View style={styles.ctaSection}>
-          <PrimaryButton label={t('takeAssessment')} onPress={() => router.push(`/quiz/${mod.id}`)} />
-          <Text style={styles.ctaNote}>Pass mark 70%. Two attempts per day.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -121,6 +113,7 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: Fonts.heading, fontWeight: '800', fontSize: 28, lineHeight: 32, color: Colors.text },
   description: { fontFamily: Fonts.body, fontSize: 14, lineHeight: 21, color: Colors.neutral800 },
+  overviewVideoWrap: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg },
   metaRow: { flexDirection: 'row', gap: Spacing.md },
   metaItem: {
     fontFamily: Fonts.bodyMedium,
@@ -160,6 +153,4 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 4,
   },
-  ctaSection: { padding: Spacing.lg, gap: Spacing.sm },
-  ctaNote: { fontFamily: Fonts.body, fontSize: 11, color: Colors.textMuted, textAlign: 'center' },
 });
