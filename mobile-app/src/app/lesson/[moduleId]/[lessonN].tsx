@@ -29,6 +29,13 @@ export default function LessonScreen() {
     resetLesson();
   }, [resetLesson]);
 
+  // Remembered so "Continue learning" on Home resumes here after the app is closed.
+  const setLastLesson = useAppStore((s) => s.setLastLesson);
+  const found = Boolean(lesson && mod && topic);
+  useEffect(() => {
+    if (found) setLastLesson(moduleId ?? '', n);
+  }, [found, moduleId, n, setLastLesson]);
+
   if (!lesson || !mod || !topic) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>

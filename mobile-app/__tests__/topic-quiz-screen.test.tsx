@@ -12,6 +12,7 @@ jest.mock('expo-router', () => ({
 
 const mockGetModule = jest.fn();
 jest.mock('@/data/modules', () => ({
+  ...jest.requireActual('@/data/modules'),
   getModule: (...args: unknown[]) => mockGetModule(...args),
 }));
 
@@ -113,5 +114,69 @@ describe('TopicQuizScreen (per-lesson knowledge check)', () => {
       await fireEvent.press(getByText(label));
     }
     expect(mockReplace).toHaveBeenCalledWith('/module/01');
+  });
+
+  describe('recording that the lesson is finished', () => {
+    async function finishCheck(lastLabel: RegExp) {
+      const utils = await render(<TopicQuizScreen />);
+      for (let i = 0; i < QUIZ.length; i++) {
+        const label = i === QUIZ.length - 1 ? lastLabel : /next question/i;
+        await fireEvent.press(utils.getByText(QUIZ[i].options[QUIZ[i].correct]));
+        await fireEvent.press(utils.getByText(label));
+      }
+      return utils;
+    }
+
+    it('moves the module’s progress on and awards First Steps when a knowledge check is finished', async () => {
+      mockParams = { moduleId: '02', lessonN: '3' };
+      await finishCheck(/continue/i);
+      expect(useAppStore.getState().moduleProgress['02']).toBe(34);
+      expect(useAppStore.getState().earnedBadgeIds).toEqual(['first-steps']);
+    });
+
+    it('counts the lesson as finished even when every answer was wrong — finishing is what matters, not the score', async () => {
+      mockParams = { moduleId: '02', lessonN: '1' };
+      const { getByText } = await render(<TopicQuizScreen />);
+      for (let i = 0; i < QUIZ.length; i++) {
+        const wrong = QUIZ[i].options.findIndex((_, o) => o !== QUIZ[i].correct);
+        await fireEvent.press(getByText(QUIZ[i].options[wrong]));
+        await fireEvent.press(getByText(i === QUIZ.length - 1 ? /continue/i : /next question/i));
+      }
+      expect(useAppStore.getState().moduleProgress['02']).toBe(12);
+    });
+
+    it('records nothing for a student who leaves partway through the check', async () => {
+      mockParams = { moduleId: '02', lessonN: '3' };
+      const { getByText } = await render(<TopicQuizScreen />);
+      await fireEvent.press(getByText(QUIZ[0].options[QUIZ[0].correct]));
+      await fireEvent.press(getByText(/next question/i));
+      await fireEvent.press(getByText(QUIZ[1].options[QUIZ[1].correct]));
+      expect(useAppStore.getState().moduleProgress).toEqual({});
+      expect(useAppStore.getState().earnedBadgeIds).toEqual([]);
+    });
+
+    it('completes POPIA and awards POPIA Aware when its last knowledge check is finished', async () => {
+      mockGetModule.mockReturnValue({ id: '01', title: 'POPIA & Your Personal Data', lessonCount: 3, minutes: 18 });
+      mockParams = { moduleId: '01', lessonN: '3' };
+      await finishCheck(/continue/i);
+      expect(useAppStore.getState().moduleProgress['01']).toBe(100);
+      expect(useAppStore.getState().earnedBadgeIds).toEqual(expect.arrayContaining(['first-steps', 'popia-basics']));
+    });
+
+    it('does not complete the module from the final assessment’s last question — that is decided on the result screen', async () => {
+      mockParams = { moduleId: '02', lessonN: '9' };
+      mockGetModuleFinalAssessment.mockReturnValue([{ text: 'x', options: ['a', 'b'], correct: 0, topic: '', area: '', explain: '' }]);
+      await finishCheck(/see my result/i);
+      expect(useAppStore.getState().moduleProgress).toEqual({});
+      expect(useAppStore.getState().earnedBadgeIds).toEqual([]);
+    });
+
+    it('records the lesson once when "Continue" is tapped twice quickly', async () => {
+      mockParams = { moduleId: '02', lessonN: '3' };
+      const { getByText } = await finishCheck(/continue/i);
+      await fireEvent.press(getByText(/continue/i));
+      expect(useAppStore.getState().moduleProgress['02']).toBe(34);
+      expect(useAppStore.getState().badgeAnnouncements).toEqual(['first-steps']);
+    });
   });
 });

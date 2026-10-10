@@ -10,6 +10,8 @@ export const Colors = {
   background: '#f3f2f2',
   surface: '#eae9e9',
   card: '#ffffff',
+  /** Warm off-white of the certificate's paper. */
+  paper: '#fbf7ee',
   text: '#201e1d',
   textMuted: '#605d5d',
   divider: '#d7d3d3',

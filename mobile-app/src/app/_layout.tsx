@@ -11,6 +11,8 @@ import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 
 import '@/i18n';
+import { BadgeCelebration } from '@/components/badge-celebration';
+import { ReminderSync } from '@/components/daily-reminder';
 import { Colors } from '@/constants/theme';
 import { ensureAnonymousSession } from '@/lib/auth';
 import { pullRemoteState } from '@/lib/sync';
@@ -85,7 +87,10 @@ export default function RootLayout() {
         <Stack.Screen name="quiz/[id]" />
         <Stack.Screen name="quiz/[moduleId]/[lessonN]" />
         <Stack.Screen name="result/[id]" />
+        <Stack.Screen name="certificate/[moduleId]" options={{ animation: 'fade' }} />
       </Stack>
+      <BadgeCelebration />
+      <ReminderSync />
     </>
   );
 }

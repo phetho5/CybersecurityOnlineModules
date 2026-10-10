@@ -113,6 +113,22 @@ describe('LessonScreen — module 02 (Online Scams): sourced topic content, per-
     expect(getByText('audio-player:https://cdn.example/topic1.mp3')).toBeTruthy();
   });
 
+  it('remembers this lesson as where the student left off, for "Continue learning"', async () => {
+    mockGetLesson.mockReturnValue({ n: 4, title: TOPIC_CONTENT.en[3].title, minutes: 4 });
+    mockParams = { moduleId: '02', lessonN: '4' };
+    await render(<LessonScreen />);
+    expect(useAppStore.getState().lastLesson).toEqual({ moduleId: '02', lessonN: 4 });
+  });
+
+  it('does not record a lesson that could not be found as where the student left off', async () => {
+    useAppStore.getState().setLastLesson('01', 2);
+    mockGetLesson.mockReturnValue(undefined);
+    mockGetModuleTopicContent.mockReturnValue(undefined);
+    mockParams = { moduleId: '02', lessonN: '77' };
+    await render(<LessonScreen />);
+    expect(useAppStore.getState().lastLesson).toEqual({ moduleId: '01', lessonN: 2 });
+  });
+
   it('shows "Start knowledge check" instead of "Next lesson", and routes to that lesson\'s own quiz', async () => {
     mockGetLesson.mockReturnValue({ n: 1, title: TOPIC_CONTENT.en[0].title, minutes: 4 });
     const { getByText, queryByText } = await render(<LessonScreen />);

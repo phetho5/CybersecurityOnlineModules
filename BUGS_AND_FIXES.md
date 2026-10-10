@@ -94,3 +94,39 @@ The moment `answerQuestion(qi, i)` recorded an answer, `answeredCount` increment
 
 **Tests:** `src/i18n/__tests__/locales.test.ts` (every language complete, no English left in a translated file, fill-in slots preserved, every key a screen asks for is defined, and a scan that fails if English is typed straight into a screen again), `__tests__/app-language.test.tsx` (real screens rendered in each language), plus additions to the lessons, continue-lesson, drills, deepseek and practice-screen tests. Verified hands-on in a browser in all three languages.
 
+---
+
+## 7. Finishing lessons never moved a module's progress, so POPIA could never be completed
+
+**Found:** 2026-10-10, while building the six badges (not reported by a user).
+
+**Symptom:** A student could finish every lesson and knowledge check and still see 0% on the module, 0% "Complete" on Home, and "Continue learning" pointing at lesson 1. POPIA (01) could never reach 100% at all, so Home's "You've completed every module" message was unreachable. Separately, the day streak always showed 0 and the 30-Day Streak badge could not be earned.
+
+**Root cause:** the only code that ever wrote module progress was `completeModule`, called from the Result screen after a passed final assessment. Nothing recorded a finished lesson, and POPIA has no final assessment. Nothing ever increased `streak` either.
+
+**Fix:**
+- `completeLesson(moduleId, lessonN)` in `src/store/useAppStore.ts`, called by the knowledge-check screen (`src/app/quiz/[moduleId]/[lessonN].tsx`) when the student taps "Continue" after the last question. Progress only moves forward. The last lesson of a module with a final assessment (02, 03) records nothing: only passing completes those. The percentage comes from `lessonProgressPct` in `src/lib/badges.ts`, rounded up so the lesson list counts exactly that many lessons as done.
+- Real streak tracking: `src/lib/streak.ts` (`nextStreak`) plus `lastActiveDate` in the store. Today is counted when the saved state loads and again whenever a lesson or module is completed.
+- The unearnable 30-Day Streak badge was replaced by a 7-Day Streak badge, and a test (`every badge in the catalogue can actually be earned`) now fails if a badge with no way to earn it is added.
+
+**Tests:** `src/lib/__tests__/badges.test.ts`, `src/lib/__tests__/streak.test.ts`, the `completeLesson` / `recordActivity` / "what is saved on the phone" blocks in `src/store/__tests__/useAppStore.test.ts`, and "recording that the lesson is finished" in `__tests__/topic-quiz-screen.test.tsx`. Verified hands-on in a browser: finishing POPIA lesson 1 moved the module to 34% and Home to lesson 2.
+
+
+---
+
+## 8. Home showed "4 badges, 33% complete" to a student who had done nothing
+
+**Found:** 2026-10-10, reported by the user: "The app has dummy milestones, for example it says I have 4 badges and I'm 33% complete."
+
+**Symptom:** on a phone that had run an early build, Home showed 4 badges and 33% complete, and "Continue learning" pointed part-way into Online Scams, although no lesson had been finished. A fresh install showed correct zeros.
+
+**Root cause:** the very first build of the app started every student with demo values: 60% on module 01, 40% on module 02, two badges (`scam-spotter`, `popia-aware`) and a 12-day streak. Those values were written to the phone's saved state. The 2026-09-30 clean-up removed them from the code's defaults but not from phones that had already saved them, and the save is kept across updates. (60 + 40 + 0) / 3 modules is the 33%. The 2026-10-10 badge update then read that saved state and awarded two more badges on top: First Steps (progress above zero) and 7-Day Streak (the demo streak of 12). That makes the four.
+
+**Fix:**
+- `src/lib/saved-state.ts` — `removeUnearnedProgress` keeps only what a student can actually have earned: a module percentage that finishing lessons or passing the final assessment can produce (60 and 40 cannot be), an assessment badge only if its module is at 100%, the other badges only if the cleaned-up progress earns them, and a streak only if it was counted from a real day.
+- `src/store/useAppStore.ts` — the saved state now has a version number (1). A save from before it is passed through `removeUnearnedProgress` once, when the app first opens after the update. Real progress, badges, the certificate name and certificates are kept. The streak restarts at 0 for everyone, because it now counts finished daily practice instead of days the app was opened.
+- Home works out "Complete" with `overallProgressPct` (`src/lib/badges.ts`), which ignores a damaged value instead of showing a broken number.
+
+**What cannot be recovered:** if a student with the demo 60% had really finished POPIA lesson 1 (34%), the app kept the larger demo number, so that one lesson's progress is gone with it. Finishing lesson 2 or more was recorded properly and is kept.
+
+**Tests:** `src/lib/__tests__/saved-state.test.ts`, the "what is saved on the phone" block in `src/store/__tests__/useAppStore.test.ts` (both demo cases failed against the old code before the fix), and `__tests__/home-screen.test.tsx`. Verified in a browser by loading the exact saved state from the report: Home showed 0 day streak, 0 badges, 0% complete.

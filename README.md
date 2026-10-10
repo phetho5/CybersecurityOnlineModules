@@ -26,13 +26,13 @@ Built with **React Native** and **Expo Router**, targeting Android and iOS. Stat
 ### Screens
 
 - **Language** — first-run picker for English / isiZulu / Sepedi / Xitsonga
-- **Home** — streak, badges, overall progress, continue-lesson shortcut, module list
+- **Home** — day streak, badges, overall progress, a shortcut back to the lesson last opened, today's practice, module list
 - **Modules** — full catalogue (POPIA, WhatsApp scams, SMS & delivery scams, email phishing, Cybercrimes Act)
 - **Module detail** — lesson rail with a gated assessment
 - **Lesson** — interactive scenario: tap the red flags in a fake bank alert
 - **Assessment** — one question at a time with immediate feedback
 - **Result** — score, badge issuance, per-topic breakdown
-- **Practice** — daily scam/legit drills plus an AI message-checker input
+- **Practice** — three new questions a day written from the lesson notes, an optional daily reminder, plus an AI message checker
 - **Profile** — badges, certificate, language switch
 
 ## Getting started
@@ -114,7 +114,7 @@ npm install
    - Inside a **Module**, tap a lesson row to open the scenario, then tap **Take the assessment**.
    - Complete the **Lesson** (tap the red flags, check your answer), then the 3-question **Assessment**.
    - Confirm the **Result** screen shows a score and, if you passed, a badge.
-   - Check the **Practice** tab (daily scam/legit drills) and the **Profile** tab (badges, certificate, language switcher).
+   - Check the **Practice** tab (three daily questions) and the **Profile** tab (badges, certificate, language switcher).
 8. To reload after making code changes, save the file — Expo Go refreshes automatically (Fast Refresh). If something looks broken, shake your phone (or press `r` in the terminal) to reload manually.
 
 **Alternative — run in an emulator/simulator instead of a physical phone** (requires Android Studio or Xcode to already be installed):
@@ -143,3 +143,4 @@ mobile-app/src/
 - [ ] Supabase backend (auth, data persistence, sync)
 - [ ] Full multilingual content (lesson/quiz/drill text in isiZulu, Sepedi, Xitsonga)
 - [ ] User testing and evaluation
+- [ ] Google Play internal-testing release (build configuration in place; first build and upload outstanding)

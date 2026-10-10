@@ -24,6 +24,7 @@ export default function TopicQuizScreen() {
   const answers = useAppStore((s) => s.quizAnswers);
   const answerQuestion = useAppStore((s) => s.answerQuestion);
   const resetQuiz = useAppStore((s) => s.resetQuiz);
+  const completeLesson = useAppStore((s) => s.completeLesson);
   const [qi, setQi] = useState(0);
 
   useEffect(() => {
@@ -59,8 +60,10 @@ export default function TopicQuizScreen() {
     } else if (isCapstone) {
       router.replace(`/result/${moduleId}`);
     } else if (isLastLessonOfModule) {
+      completeLesson(moduleId ?? '', n);
       router.replace(`/module/${moduleId}` as Href);
     } else {
+      completeLesson(moduleId ?? '', n);
       router.push(`/lesson/${moduleId}/${n + 1}` as Href);
     }
   }

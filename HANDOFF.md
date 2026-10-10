@@ -2,7 +2,211 @@
 
 Snapshot of where this project stands, so a new chat can pick up without re-deriving context. Update this every 10-15 messages.
 
-**Last updated:** 2026-10-09 — isiZulu and Xitsonga translations of the POPIA and Digital Privacy modules wired in from the team's own notes (plus the one Sepedi section that was supplied). The rest of the Sepedi is **AI-translated by Claude** at the user's explicit request, pending native-speaker review. **Later the same day the whole app (not only the notes) was made to follow the chosen language** — see the section just below. Good point to start a fresh chat.
+**Last updated:** 2026-10-10 (night). Everything up to and including the name in Profile and the Play Store build setup is committed on the branch `multilingual-app-and-new-modules`, with a pull request open into `main`. Start with the first section, then "Open items" and "Next steps" at the bottom.
+
+## 2026-10-10 (night): name in Profile, and Play Store build setup
+
+**The name.** The user asked to be able to add their name "in the settings". There is no Settings screen, so it is on Profile (which already holds notifications and language). Asked: the name is also used to greet the student on Home. Built tests first.
+
+- **Profile:** a "Your name" section at the top. No name: a line saying what it is for and an "Add your name" button. With a name: the name, a "Change name" button. Editing happens in place with "Save name" and "Cancel".
+- It is the same saved name the certificate uses (`studentName` in the store), so a name typed in either place shows in both. It stays on the phone.
+- **One shared form:** `src/components/name-form.tsx` (`NameForm`), used by Profile and by `src/app/certificate/[moduleId].tsx`. Same rules as before: 2 to 60 characters, character count, save disabled until valid with the reason shown.
+- **Home:** the greeting becomes "<greeting>, <first name>" (`personalGreeting` in `src/lib/student-name.ts`). The native-speaker greetings are untouched; only the name is added. The greeting may take three lines.
+- A saved name that is damaged or breaks the rules is treated as no name (`readStudentName`).
+- **Not built:** removing a name once saved (it can only be changed).
+- Six new interface strings (`yourName`, `nameEmpty`, `nameAdd`, `nameHelp`, `nameSave`, `cancel`), AI-translated and unreviewed.
+- **Caught in the browser check, not by the tests:** at 320 px the English greeting already fills two lines, so a two-line limit hid the name completely. The limit is three.
+- **Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (23 warnings), **979 tests across 46 suites passing** (`npx jest --runInBand`; an earlier full run on a busy machine failed 3 tests in 3 screen suites that took up to 107 s, the reason was not captured, and the same suites passed alone and in a second full run). Hands-on in a phone-sized Chromium, no page errors: add, too short, too long, save, change, cancel, reload; Home greeting at 390 px and at 320 px in all four languages with a 54-character name; a name typed on the certificate screen shows on Profile.
+- **Not verified:** on a real phone (keyboard covering the box, in particular).
+
+**Play Store setup (the user wants an internal-testing release first; they have a personal Play developer account).**
+
+- `app.json`: Android package `com.cyberawaresa.app` (Claude's choice, told to the user; **permanent once uploaded**), EAS project id and `owner: vhulenda`. The microphone permission is blocked (`blockedPermissions`): the app never records, and `expo-audio` adds it by default.
+- `mobile-app/eas.json`: a `production` profile (app bundle, version code raised automatically, EAS `production` environment), a `preview` profile (installable `.apk`), and submit set to the `internal` track.
+- EAS project created: `@vhulenda/mobile-app`, https://expo.dev/accounts/vhulenda/projects/mobile-app. The machine is logged in to EAS as `vhulenda`.
+- **Not done, needs the user:** see "Next steps" 1 to 4. No build has been started.
+- **Worth knowing for Play:** the app declares a foreground service for media playback, because `_layout.tsx` turns on background audio. Google Play asks for a declaration (with a short video) for that. If background audio is not needed, turning it off (`enableBackgroundPlayback` in `app.json` and `shouldPlayInBackground` in `_layout.tsx`) removes the question.
+
+## 2026-10-10 (evening): earned badges are celebrated in the middle of the screen
+
+The user asked for an earned badge to "appear in the middle of the screen with some dramatic entrance and animations, not just appearing on top". Built tests first.
+
+- `src/components/badge-celebration.tsx` (`BadgeCelebration`, mounted in `_layout.tsx`) replaces `badge-earned-banner.tsx`, which is deleted. It covers the whole screen with a dark backdrop. The badge (168 px) spins and springs into the centre, two rings burst outwards, twelve sparkles fly out, rays turn slowly behind it, then the name, a congratulation and two buttons rise in: "See my badges" (opens Profile) and "Keep going" (closes). After the entrance the badge keeps gently pulsing.
+- It stays until closed. The Android back button closes it. Two badges earned together are celebrated one after the other, each with its own entrance.
+- **Assessment badges are now celebrated too** (Scam Spotter, Digital Privacy Pro). They used to be left out because the Result screen shows them; that was Claude's reading of "the badges when earned", told to the user. A repeat pass does not celebrate again.
+- A student whose phone is set to "reduce motion" gets the badge in place with no movement.
+- **Replay from Profile (asked for afterwards):** tapping an earned badge on Profile plays the same celebration again, with a single "Back" button. A locked badge is not a button and does nothing. The store holds this in `badgeReplayId` (`replayBadge` / `closeBadgeReplay`), which is not saved on the phone and never counts as earning the badge again. A newly earned badge always goes before a replay.
+- Built with React Native's own `Animated`, no new dependency.
+- **Caught in the browser check, not by the tests:** React Native's `useAnimatedValue` does not exist in the web build and crashed the screen. The component uses `useState(() => new Animated.Value(0))` instead; do not switch back.
+- Three new interface strings (`badgeCongrats`, `badgeSeeMine`, `badgeKeepGoing`), AI-translated and unreviewed; `badgeEarnedHint` and `dismiss` were removed.
+- **Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors, **920 tests across 45 suites passing**. Hands-on in a phone-sized Chromium: tapping an earned badge on Profile replays the celebration and "Back" returns to Profile, a locked badge does nothing; finishing POPIA lesson 1 shows the celebration centred at 390 px (English) and 320 px (Xitsonga), nothing overflows, "Keep going" closes it, no page errors.
+- **Not verified:** how smooth the animation is on a real phone, and the reduce-motion path on a real phone.
+
+## 2026-10-10 (earlier): real milestones, daily questions and reminders
+
+The user reported fake numbers on Home ("4 badges, 33% complete"), asked for "Continue learning" to resume where they actually left off, and asked for daily practice to become three questions a day from the notes, never repeated, with a daily notification. Bug investigated first, feature decisions put to the user, then built tests first.
+
+**The fake numbers (bug #8 in `BUGS_AND_FIXES.md`, read it):** demo values from the app's first build were still saved on the user's phone. Saves from before this update are cleaned once on first open (`src/lib/saved-state.ts`, save version 1 in the store). Real progress is kept.
+
+**Continue learning:** the lesson screen records the lesson being read (`lastLesson` in the store). Home resumes that lesson; if it has since been finished, the next one in that module; if the module is complete, the first unfinished module (`src/lib/continue-lesson.ts`).
+
+**Decisions the user made (asked on 2026-10-10):**
+- Three questions a day in total, each from a different topic.
+- The AI writes them from the lesson notes; offline, unseen knowledge-check questions from the notes are used.
+- They replace the old "Scam or Legit?" practice messages. "Check a message" stays.
+- They drive the day streak, a card on Home and totals on Profile. No new badges yet (those need artwork).
+
+**How daily practice works:**
+- `src/lib/daily-practice.ts` — the rotation of all 14 topics (`PRACTICE_TOPICS`, one module at a time in turn), `loadDailyQuestions` and `practiceStatus`. `src/lib/deepseek.ts` — `generateDailyQuestions` sends each topic's notes and gets two candidate questions back per topic.
+- **Never the same question twice:** every question shown is saved on the phone (`askedQuestions`). A candidate that matches one, ignoring capitals and punctuation, is skipped, and the AI is sent the last 12 questions for each topic and told not to repeat or rephrase them. Notes questions carry a fixed id, so they are not repeated after a language change either.
+- The day's questions and answers are saved (`dailyPractice`), so reopening the app shows the same set with no new AI call. A new set is fetched on a new day. Changing language before answering anything fetches the set again in the new language; after an answer the set stays as it is.
+- **Streak:** it now counts days on which every daily question was answered, right or wrong. Opening the app or finishing a lesson no longer counts. Home shows 0 as soon as a day has been missed (`currentStreak` in `src/lib/streak.ts`). The 7-Day Streak badge follows the same rule and its how-to-earn line was reworded.
+- **Screens:** `src/components/daily-practice.tsx` (on Practice), a "Today's practice" card on Home, a "Daily practice" totals section on Profile (days practised, questions answered, correct answers).
+
+**Reminders (`expo-notifications`, new dependency, works in Expo Go):**
+- **Asked on entry (the user's instruction, later on 2026-10-10):** the first time a student is past the language picker, the phone's own notification prompt appears by itself (`ReminderSync`). Allowing turns reminders on; refusing is saved as off, so the student is asked once, not on every launch. A fault (not an answer) leaves it open and the next launch asks again.
+- **Switch in Profile (also the user's instruction):** a "Notifications" section with a "Daily reminder" switch (`DailyReminder`). If the phone has notifications blocked, the switch stays off and an "Open phone settings" link is shown, because the phone will not show its prompt a second time. The earlier card on Practice was removed.
+- The reminder arrives at 18:00 on the phone's clock, only on days not yet practised. It is planned 14 days ahead as separate notifications and re-planned whenever the app is opened, practice is finished or the language changes (`src/lib/reminders.ts`, `ReminderSync` in `src/components/daily-reminder.tsx`, mounted in `_layout.tsx`). Tapping it opens Practice.
+- **Consequence of planning 14 days ahead:** a student who does not open the app for two weeks stops getting reminders until they open it again.
+- The 18:00 time and the 14 days were Claude's choices, told to the user, not asked. Both are constants at the top of `reminders.ts`.
+- Not offered in a web browser: no prompt, and the Notifications section is left out of Profile. This also means the browser check could not show the prompt or the switch at all; it only confirmed Home, Profile and Practice still load with no errors.
+
+**Removed:** the scam-or-legit practice messages: `src/data/drills.ts`, `generateSADrills`, the store's `drillPicks` / `answerDrill` / `recordActivity`, and five interface strings. The `scam` / `legit` strings were left in the language files because they are native-speaker translations.
+
+**Translations:** 29 new or reworded interface strings (two of them, "Notifications" and "Open phone settings", added with the Profile switch), AI-translated into isiZulu, Sepedi and Xitsonga in the `.ai.json` files, unreviewed like the rest. This includes the wording of the notification itself.
+
+**Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (22 warnings, all in test files plus the old i18next one), **883 tests across 45 suites passing** (`npx jest --runInBand`). Hands-on in a phone-sized Chromium against the live DeepSeek API, no page errors:
+- The exact saved state from the bug report opens as 0 day streak, 0 badges, 0%.
+- A new student gets three AI-written questions in about 5 seconds, answers them, sees "Done for today", then Home shows the streak at 1 and the done card and Profile shows the totals. A reload shows the same questions with no new AI call.
+- Opening Online Scams lesson 4 and returning to Home shows that lesson under "Continue learning".
+- With the AI blocked, three questions from the notes appear, labelled "From your lesson notes".
+- At 320 px wide in isiZulu, Sepedi and Xitsonga nothing overflows and the questions arrive in that language.
+
+**Not verified:**
+- **Anything about notifications on a real phone.** The permission prompt, the 18:00 delivery, the tap opening Practice and the Android channel are covered by tests against a stand-in for the phone's notification system only. This needs Expo Go on a phone.
+- **The accuracy of the AI's questions and answers.** The ones seen in the check were sensible and matched the notes, but nobody checks each day's questions. A wrong answer key would teach students something false. The quality in isiZulu, Sepedi and Xitsonga was not judged at all.
+- **The streak across real days** (tested with set dates).
+
+**Worth knowing:**
+- The AI sometimes writes "according to the notes" in a question even though the instruction tells it not to mention the notes.
+- Daily practice (questions, answers, totals) is kept on the phone only. Nothing is sent to Supabase, and there is no table for it.
+- `CLAUDE.md` still says the app has no test runner and that there are no network calls; both are out of date.
+- Port 8081 was held by the user's own dev server (PID 50856) and left alone. The check used port 8090 and that server was stopped.
+- `app.json` gained the `expo-notifications` plugin, which matters only for a real build.
+
+## 2026-10-10 (earlier still): the app logo
+
+The user supplied `badges/logo.png` (a maroon fingerprint inside scan brackets, 189 × 200 px, transparent background) and asked for it to be added "in the appropriate files". Built tests first.
+
+- **App icon, splash screen, favicon:** `icon.png`, the three `android-icon-*.png` layers, `splash-icon.png` and `favicon.png` in `mobile-app/assets/images/` were regenerated from the logo, replacing the Expo starter artwork. The icon is the logo on white. `app.json`: the splash background is now the app background (`#f3f2f2`, was Expo blue), the Android icon background is white, and the `ios.icon` override pointing at the Expo starter icon (`assets/expo.icon`) was removed so iPhones use `icon.png`. The `assets/expo.icon` folder is now unused and was left in place.
+- **Inside the app:** `src/components/brand-logo.tsx` (`BrandLogo`), shown above "CyberAware SA" on the language picker and beside the greeting on Home. It reads `assets/images/logo.png` (512 px, square).
+- **On the certificate (the user said yes when asked):** the logo sits above "CyberAware SA", on screen and in the PDF, 30 units on the 360-unit grid (`LOGO_SIZE` in `src/lib/certificate-html.ts`). The PDF page is a standalone HTML string and cannot load a bundled image, so it embeds a 240 px copy from `src/lib/logo-data-uri.ts` (about 6 KB). **If the logo changes, regenerate that file as well as the images.**
+- **App name (the user said yes when asked):** `app.json` `name` is now "CyberAware SA". `slug` (`mobile-app`) and `scheme` (`mobileapp`) were deliberately left alone: Expo Go keeps saved progress per slug, so changing it would hide the progress already on the user's phone.
+- **Image quality:** the supplied file is small, so the shape was enlarged and its edges re-sharpened in one flat colour (`#77030f`, the average of the original). It looks clean at icon size; a larger or vector original would still be better for the stores. The originals in `badges/` are untouched.
+- **Worth knowing:** the logo is maroon, while the app's accent is orange-red (`#ec3013`). Nothing was recoloured, so the certificate now carries a maroon logo next to orange-red corners and seal.
+- **Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (12 warnings), **704 tests across 40 suites passing** (`npx jest --runInBand`). Hands-on in a phone-sized Chromium at 390 and 320 px wide, no page errors: language picker, Home in English and Xitsonga (the English greeting wraps to two lines at 320 px, nothing overflows), favicon served; the certificate on screen in English and in isiZulu with a 44-character name; the PDF page rendered at A4 size for both, with the logo loaded and nothing overflowing.
+- **Not verified:** the logo in a PDF made by a real phone (the page was rendered in a browser, not by the phone's PDF engine); the home-screen icon, app name and splash screen on a real phone. Expo Go shows its own icon and splash, so these only appear in a development or store build.
+- Port 8081 was held by the user's own dev server (PID 50856, a phone connected); the check used port 8090 and that server was stopped afterwards.
+
+## 2026-10-10 (earlier): six badges with artwork, lesson progress and a real day streak
+
+The user supplied six badge images in `badges/` (repo root), confirmed which badge each one is, and said "go with your recommendations" on the three open badge questions. Built tests first.
+
+**The six badges** (ids in brackets):
+
+| Badge | Image | How it is earned |
+|---|---|---|
+| First Steps (`first-steps`) | `badge 5.jpg` | Finish any one lesson's knowledge check |
+| POPIA Aware (`popia-basics`) | `badge 4.png` | Finish all three POPIA lessons |
+| Scam Spotter (`scam-spotter`) | `badge 1.png` | Pass the Online Scams final assessment (unchanged) |
+| Digital Privacy Pro (`popia-aware`) | `badge 2.png` | Pass the Digital Privacy final assessment (unchanged) |
+| 7-Day Streak (`streak-7`) | `badge 3.png` | Open the app 7 days in a row |
+| Cyber Aware Graduate (`cyber-graduate`) | `badge 6.png` | Complete all three modules |
+
+- **Decisions (Claude's recommendations, accepted by the user):** the flame is the 7-Day Streak and replaces the unearnable 30-Day Streak; the gold star is Cyber Aware Graduate, not Perfect Score; POPIA Aware is earned by finishing the lessons, whatever the score.
+- **Id catch:** Digital Privacy Pro has always been stored as `popia-aware`, so it keeps that id and POPIA Aware is `popia-basics`. Do not rename either.
+- **Not built:** Perfect Score, Sharp Eye, Message Detective and a 30-day streak have no artwork and stay parked.
+
+**Found and fixed on the way (bug #7 in `BUGS_AND_FIXES.md`):** finishing lessons never moved a module's progress, so POPIA could never reach 100%, and nothing ever increased the streak. Both are fixed, because three of the badges depend on them. Home's "Complete" percentage, the module progress bars and "Continue learning" now move as lessons are finished.
+
+**How it works:**
+- `src/lib/badges.ts` — `computeEarnedBadgeIds` (progress in, badges out; never takes a badge away), `lessonProgressPct`, `countEarnedBadges`. `src/lib/streak.ts` — `nextStreak`.
+- `src/store/useAppStore.ts` — new `completeLesson`, `recordActivity`, `dismissBadgeAnnouncement`; new saved field `lastActiveDate`; new unsaved queue `badgeAnnouncements`. Every newly earned badge is also sent to Supabase when a user is signed in.
+- A lesson counts as finished when the student taps "Continue" after the last knowledge-check question. The last lesson of Online Scams and Digital Privacy records nothing: only passing the final assessment completes those modules.
+- **Telling the student:** superseded later the same day by the centre-screen celebration (see the first section). Originally `src/components/badge-earned-banner.tsx` showed a card at the top of the screen. The two assessment badges are not shown there because the Result screen already shows them (now with the badge picture, not a ribbon icon).
+- **Profile:** two badges per row; a locked badge is faded and says how to earn it; "N of 6 earned", or a congratulation when all six are held.
+- **Old saves:** a student who had already made progress before this update gets the badges that progress earned, silently, when the app opens.
+- **Images:** resized to 384 px PNGs in `mobile-app/assets/images/badges/<id>.png`; the white background and drop shadow were cut out of `badge 5.jpg`. The originals in `badges/` are untouched.
+
+**Translations:** 14 new interface strings (4 badge names, 6 how-to-earn lines, 4 others), AI-translated into isiZulu, Sepedi and Xitsonga in the `.ai.json` files, unreviewed like the rest. `badgeName_streak-30` was removed.
+
+**Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (12 warnings), **676 tests across 36 suites passing** (`npx jest --runInBand`). Hands-on in a phone-sized Chromium, no page errors: Profile for a new student; finishing POPIA lesson 1's knowledge check (banner appears, closes, Home moves to 34% and lesson 2, Profile shows 1 of 6); the 7-Day Streak banner on opening the app on the seventh day and tapping it through to Profile; all six earned; Profile at 320 px wide in isiZulu, Sepedi and Xitsonga; a save from before this update.
+
+**Not verified:**
+- **On a real phone.**
+- **The Result screen's badge picture and the Graduate banner in a browser** (covered by tests only; reaching them needs a passed final assessment).
+- **The streak across real days.** Tested with set dates, not by waiting.
+
+**Worth knowing:**
+- The streak counts days the app was opened, not days a lesson was done. Say so if the report describes it.
+- `badge 5.jpg`'s frame is a slightly different style from the other five, and several images keep a faint blue fringe on the right edge from the original background removal. Regenerating them would fix both.
+- Port 8081 was held by another process (PID 5376) that Claude did not start and left alone; the browser check used port 8090, and that server was stopped afterwards.
+
+## 2026-10-10 (later): the certificate
+
+The user asked for a certificate that makes students feel rewarded. Planned first, four decisions put to the user, then built tests first.
+
+**Decisions the user made:**
+- **Name:** the student types it once, the first time they open a certificate. Stored on the phone only (`studentName` in the store), editable, never sent to Supabase.
+- **Awarded for:** each module with a final assessment — Online Scams (02) and Digital Privacy (03). POPIA has none.
+- **Footer:** the two researchers' printed names plus "COS700 research project · University of Pretoria". No signatures, no crest, no supervisor name.
+- **Language:** the certificate is written in the language the module was passed in, and stays in that language even if the app language changes later.
+
+**What is on it:** CyberAware SA, "Certificate of Completion", the student's name, the module, a red seal with the badge name, score (with the 70% pass mark), date awarded, a certificate number (`CA-<module>-<yyyymmdd>-<4 chars>`), researchers and project line. Portrait A4 — the plan said landscape, but portrait fills a phone screen and still prints on one sheet (Claude's call, told to the user).
+
+**How it works:**
+- Passing a final assessment issues the certificate (`completeModule(moduleId, badgeId, scorePct)`). A repeat pass keeps the original date, number and language and can only raise the score.
+- Result screen: "View certificate" now opens `/certificate/<moduleId>` (it used to jump to Profile).
+- Profile: one row per certificate. Earned rows open the certificate; locked rows say how to earn it and open the module. The old permanently disabled Download button is gone.
+- "Download PDF" builds a one-page PDF and opens the phone's share sheet (`expo-print` + `expo-sharing`, both in Expo Go). In a browser it opens the print dialog instead.
+- A badge earned before this feature (or on another phone) has no stored score/date/number; its certificate shows without those three lines rather than inventing them.
+
+**Code:** `src/lib/certificate.ts` (rules and wording), `src/lib/certificate-html.ts` (PDF page), `src/lib/export-certificate.ts` (PDF + share, never throws), `src/components/certificate.tsx` (on-screen drawing and the seal), `src/app/certificate/[moduleId].tsx` (screen). **The on-screen certificate and the PDF page are two drawings of the same layout on a 360-unit grid — change them together.**
+
+**Also changed:** the Result screen no longer calls the badge "verifiable" (nothing verifies it); the `badgeVerifiable` string was removed from all languages. `app.json` gained the `expo-sharing` plugin (added automatically by `expo install`).
+
+**Translations:** 23 new interface strings, AI-translated into isiZulu, Sepedi and Xitsonga in the `.ai.json` files, unreviewed like the rest. This includes the wording printed on the certificate itself.
+
+**Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (9 warnings), **563 tests across 32 suites passing** (`npx jest --runInBand`). Hands-on in a phone-sized Chromium: name form (too-short error, character count), English certificate, isiZulu certificate with a 44-character name, a Sepedi certificate for a badge with no stored details, not-earned and no-certificate messages, Profile with one and with no certificates, and the PDF page rendered at A4 size. No page errors.
+
+**Not verified:**
+- **On a real phone.** PDF creation and the share sheet only run on a device; in the browser the PDF page was rendered directly, not produced by the phone's PDF engine.
+- **The Result → "View certificate" tap in a browser** (covered by tests only).
+- **The Archivo typeface in the PDF.** The PDF page loads it from Google Fonts, so a phone that is offline when the PDF is made will get a plain fallback typeface.
+
+**Typed-routes gotcha:** after adding a route file, `npx tsc --noEmit` fails on `router.push('/certificate/…')` until `.expo/types/router.d.ts` is regenerated. A dev server that was already running regenerated it wrongly (it listed `src/lib` files as routes); deleting the file and starting `npx expo start` fresh fixed it.
+
+## 2026-10-10: "Check a message" now also takes a screenshot
+
+The user asked to be able to upload screenshots of possible scams (e.g. an email). Built, tests first.
+
+- **How it works:** on Practice, under the text box, "Add a screenshot" opens the phone's photo library. The chosen picture replaces the text box (preview + "Remove screenshot"); "Check this screenshot" sends it to the AI and shows the same verdict card as a pasted message, in the student's language. Removing it brings the text box back with whatever was typed.
+- **Model:** screenshots go to DeepSeek's `deepseek-flash` (the only model on this key that accepts images — confirmed from `GET /models` and a live call on 2026-10-10). Pasted text and practice generation still use `deepseek-chat`, unchanged. `deepseek-chat` is no longer in the key's model list but still works; if it is ever retired, switch `TEXT_CALL.model` in `deepseek.ts` to `deepseek-flash`.
+- **Code:** `checkScreenshot` and `validateScreenshot` in `src/lib/deepseek.ts`; `src/lib/pick-screenshot.ts` (wraps `expo-image-picker`, new dependency, works in Expo Go); UI in `src/app/(tabs)/practice.tsx`. Three new error reasons: `image-too-large` (over about 6 MB), `unsupported-image` (not JPEG/PNG/WebP), `no-text-found` (the AI saw no message in the picture; no "Try again" is offered for this one).
+- **Privacy:** an always-visible note under the button tells the student to crop out anything personal and that the picture is sent to an AI service; the app keeps no copy. The user was asked whether they wanted something stricter (e.g. forced cropping) and **did not answer** — the note was Claude's recommended default. Screenshots can contain other people's personal information and go to DeepSeek's servers outside South Africa; this belongs with the open POPIA question.
+- **Translations:** 10 new interface strings, AI-translated into isiZulu, Sepedi and Xitsonga in the `.ai.json` files, unreviewed like the rest.
+- **Also changed:** any check (text or screenshot) that runs longer than 5 seconds now changes its waiting text to "Still checking — almost there…" (`checkingMessageSlow`, a string that already existed but was unused).
+- **Verified:** `npx tsc --noEmit` clean, `npm run lint` 0 errors (8 warnings), **478 tests across 27 suites passing**. Hands-on in a phone-sized Chromium against the live API: cancel the picker (nothing changes), pick a fake SARS email (preview, "Likely a scam" in about 3 s), remove (text box returns), pick a picture with no text ("Couldn't find a message in that image"). **Not checked on a real phone** — the photo picker itself and upload speed on mobile data need a human in Expo Go.
+- **Noticed:** in that browser check the Supabase sign-in failed with a name-lookup error (`ERR_NAME_NOT_RESOLVED`) rather than the earlier "anonymous sign-ins disabled" reply. Cause not investigated; worth checking the project is not paused when Supabase is next worked on.
+
+## Where things stand (2026-10-09)
+
+- **Modules:** three, all with real sourced English content — `01` POPIA & Your Personal Data (3 topics), `02` Online Scams (9 topics), `03` Digital Privacy (2 topics, with a 10-question final assessment). There is no Cybercrimes Act module any more.
+- **Languages:** the whole app follows the chosen language (English, isiZulu, Sepedi, Xitsonga): interface, module and badge names, lessons, knowledge checks, results, and both AI features. Much of the non-English text is AI-translated and unreviewed — see part 2 below for exactly which.
+- **AI features:** message checker and AI-generated daily practice, via DeepSeek called directly from the app.
+- **Backend:** Supabase is wired in with anonymous auth, but nothing syncs yet because anonymous sign-ins are still disabled in the dashboard.
+- **Badges:** as of 2026-10-10 there are six, all earnable, each with its own artwork — see the first section above. (On 2026-10-09 there were three, one of them unearnable.)
+- **Quality bar:** `npx tsc --noEmit` clean, `npm run lint` 0 errors, 429 tests across 26 suites passing with `npx jest --runInBand`. Checked hands-on in a phone-sized desktop browser in all three languages; **not yet checked on a real phone**.
 
 > **Read this first — parts of this file below are stale.** Between 2026-10-01 and 2026-10-09 a session ran that never updated this file. It replaced the old mockup-sourced modules 01/03 with real sourced English content: **01 is now "POPIA & Your Personal Data" (3 topics, from `POPIA/` Sections 1, 2, 4) and 03 is now "Digital Privacy" (2 topics, Sections 3 and 5; Section 5's 10-question exam is its final assessment). The Cybercrimes Act module no longer exists.** It also added `src/lib/topic-source.ts` (per-module content/quiz/final-assessment lookup, so screens no longer special-case module `02`). Anything below that says modules 01/03 are "mockup-sourced", "Cybercrimes Act", or "deferred" is out of date — trust the code (`src/data/modules.ts`, `popia-topics.ts`, `digital-privacy-topics.ts`) over those paragraphs.
 
@@ -172,43 +376,77 @@ The user said "remove all the placeholder data, I want real data." Two different
 
 **Verification done for this later part of the session:** `npx tsc --noEmit` clean, `npm run lint` clean (only the pre-existing unrelated i18next warning), full suite 183/183 passing. Again, **no visual/interactive check** — no browser tool available here. Whether the videos actually play correctly on device, and whether the "coming soon" states read well, still needs human eyes.
 
-## What's NOT done yet
+## Open items
 
-- **DeepSeek key has no spending/rate limit set yet** (as far as this session knows) — the user should set one on the DeepSeek dashboard given the key ships in the client bundle (see architecture decision above). Not verified this session; ask the user directly rather than assuming either way.
-- **No hands-on check of the new AI feature(s) in Expo Go/a real browser, for either the message checker or the now-AI-generated-by-default daily practice drills.** This session verified `npx tsc --noEmit` clean, `npm run lint` clean, and the full suite (229/229) passing — but never actually loaded the Practice screen against the real DeepSeek API in a running app. Needs a human pass specifically checking: does the daily-practice skeleton→content transition look right, does the fallback-to-static path actually trigger sensibly on a real failure (e.g. airplane mode) and read well, does "Get new examples" feel responsive, and does the message checker's real JSON responses parse as expected. (The earlier "fetched the web bundle and grepped it" check from the first half of this session turned out to be an unreliable signal for route-specific code — see the note above — so don't treat that as having verified anything here.)
-- ~~Migration 0002 (the `lesson-media` Storage bucket) hasn't been run yet~~ — **it has now.** The user uploaded real video files via the Supabase dashboard and shared working public URLs this session, which only works if the bucket exists and is public-read. Migration 0001 (the 4 tables) was also already confirmed live.
-- **"Allow Anonymous Sign-Ins" is still disabled on the Supabase project.** Reconfirmed 2026-09-30 via a direct `/auth/v1/signup` probe (`422 anonymous_provider_disabled`). The app handles this gracefully (local-only fallback), but no progress/badges/quiz attempts can sync to the now-live tables until this is toggled on in the dashboard under Authentication → Sign In / Providers.
-- **POPIA data-residency flag still open.** Supabase has no South Africa hosting region. Per `CLAUDE.md`'s standing rule, before any *real, identifiable* student data goes to Supabase (once real auth replaces anonymous auth), this needs a documented lawful basis under POPIA — this session's anonymous-auth rows aren't tied to a real identity, but this still needs to be resolved before real auth lands.
-- **Real auth method still undecided** (email/password vs. university-domain-restricted vs. magic link) — deliberately skipped this session in favor of anonymous auth. Anonymous auth is not a long-term substitute for real accounts (a student loses their progress if they clear app storage/reinstall, since there's no login to recover it from another device).
-- **Multilingual content: the Online Scams module (02) is now fully sourced and translated** (intro/sections/example/activity/quiz, all 9 topics, all 4 languages — see above). Module/lesson **titles** everywhere, and `module/[id].tsx`'s `MODULE_TAG`/`MODULE_INTRO` chrome, plus modules 01/03's content and daily-drill messages, remain English-only — still needs a native-speaker source, same as before.
-- A handful of brand-new UI chrome strings added this session ("Knowledge Check", "Start knowledge check", "Continue", "Lesson not found.", "You've completed every module. Nice work!") were added to `en.json` **only**, deliberately not translated — no native-speaker source for them, and i18next's `fallbackLng: 'en'` shows English rather than broken text for zu/nso/ts users on just these few strings.
-- **No dark mode** — the original design prototype only specified a light theme.
-- **Video coverage is partial.** Module `02` (Online Scams) has a module-overview video plus per-topic videos for topics 2, 3, 5, 9 — topics 1, 4, 6, 7, 8 still have no video, just real text content (not a gap, just not sent yet — the user said they'd keep sending one at a time). Modules `01`/`03` (POPIA, Cybercrimes Act) have no video/audio at all yet — the player components and data fields (`videoUrl`/`audioUrl` in `LESSON_SEEDS`) are built and tested, just unset. Same upload flow as before: Supabase dashboard → Storage → `lesson-media` bucket → copy the public URL → tell the next session which module/lesson (or topic number, for module 02) it's for.
-- **POPIA/Cybercrimes Act content cleanup is intentionally deferred.** The user was asked directly whether to touch these two modules' still-mockup-sourced lesson titles/quiz/drills, and chose "leave as-is for now." Don't revisit this without the user raising it again or supplying real source material — it was a deliberate choice, not something missed.
+**Needs the user (cannot be done from code):**
+- **Merge the branch.** Everything is on `multilingual-app-and-new-modules`, pushed to GitHub. It was put on a branch rather than `main` deliberately, pending the user's say-so. Open a pull request or merge it.
+- **Native-speaker review of all AI-translated text** before it is used with students or described as native-language content in the report. The list of files is in part 2 above. This includes sampling the AI-generated practice messages, whose quality in isiZulu, Sepedi and Xitsonga is unverified.
+- **Decide what `CLAUDE.md` should say about translation.** It still says "do not invent translations", and its "Translation scope (current)" row describes the app as mostly English. Both are out of date after this session. It was left untouched because it is the user's standing policy.
+- **Confirm one isiZulu heading with the translator:** "Ngeminingwane" in `digital-privacy-topics-zu.ts` is a letter-for-letter conversion of Cyrillic characters in the notes and is probably a typo for "Ngemininingwane".
+- **Decide whether the source notes belong on GitHub.** The PDFs and Word files in `POPIA/`, `online scams/`, `Zulu Notes/` and `Tsonga Notes/` were committed. If the repository is public and they should not be, they need removing.
+- **Check the app on a real phone** in each language (Expo Go). The only hands-on check so far was a desktop browser at phone size.
+- **Enable "Allow Anonymous Sign-Ins"** in the Supabase dashboard (Authentication → Sign In / Providers). Last confirmed disabled on 2026-09-30, and the browser check on 2026-10-09 still showed the sign-in failing. Until then no progress, badges or quiz attempts reach the database.
+- **Set a spending/rate limit on the DeepSeek key.** It ships inside the app, so anyone can extract it. Not known to have been done.
+- **Free port 8081 if Expo misbehaves.** A `node.exe` (PID 41152 on 2026-10-09) was holding it without answering requests. Claude did not start it and left it alone.
+- **More Online Scams videos.** Topics 1, 4, 6, 7 and 8 have none; POPIA and Digital Privacy have no video or audio at all. Upload to the `lesson-media` bucket and pass the public URL plus the topic number.
+
+**Decisions not yet made:**
+- **Real sign-in method** (email/password, university-domain-restricted, or magic link). Anonymous auth loses a student's progress if they reinstall.
+- **POPIA lawful basis for Supabase.** It has no South African hosting region; this must be documented before real, identifiable student data is stored.
+- **Whether a student's typed certificate name should ever leave the phone.** Today it does not. If certificates are later synced or made verifiable, the name becomes personal information held on Supabase and falls under the POPIA question above.
+- **Whether the screenshot privacy note is enough**, or whether students should be made to crop before uploading (see the 2026-10-10 section).
+- **Whether to label AI-translated lessons on screen.** AI-generated practice messages carry a label; AI-translated lessons do not.
+- **Whether the DeepSeek calls should move behind a Supabase Edge Function** so the key is not in the app.
+
+**Known rough edges in the app, noticed but not changed:**
+- The Digital Privacy result screen lists the same topic name ten times under "Marks by topic", because that exam has no per-question topic.
+- `src/app/quiz/[id].tsx` and `src/data/quiz.ts` (apart from `PASS_MARK`) are dead code: nothing links to that screen any more.
+- No dark mode.
+
+## Parked: the remaining badge ideas
+
+Six badges are built (see the top section). Four ideas from the original list of ten have no artwork and were left out:
+
+| Badge | How it would be earned | New tracking needed |
+|---|---|---|
+| Perfect Score | 100% on any final assessment | No (certificates already hold the score) |
+| Sharp Eye | 10 daily practice messages judged correctly | A running count |
+| Message Detective | First use of "Check a message" | A one-time flag |
+| 30-Day Streak | 30 days in a row | No (the streak is now tracked) |
+
+To add one: put its image in `mobile-app/assets/images/badges/`, add it to `BADGES` in `src/data/badges.ts`, add its rule to `PROGRESS_RULES` in `src/lib/badges.ts`, and add `badgeName_<id>` and `badgeHow_<id>` to all four language files. The tests fail if any of those is missing.
 
 ## Known bugs
 
-See `BUGS_AND_FIXES.md` — 6 entries, all fixed (#5 is two test-only defects, #6 is the app not following the chosen language; both from 2026-10-09):
-1. Language switcher not actually changing displayed text (root cause: `setLanguage` never called `i18n.changeLanguage()`).
-2. Supabase client crashed Expo Router's web SSR render (`window is not defined`) the moment it was first imported — fixed by gating `persistSession`/`autoRefreshToken` on `typeof window !== 'undefined'`.
-3. Assessment screen silently skipped per-question feedback for all but the last question — fixed by tracking the displayed question index as its own state instead of deriving it from the answered-count.
-4. "Check a message" AI-tutor button (`practice.tsx`) silently did nothing when tapped (`onPress={() => {}}`) — no AI checker has actually been built. Fixed by honestly disabling the input/button with "coming soon" copy rather than a silent no-op initially; **the real feature (DeepSeek-backed) was built this session — see above.**
+See `BUGS_AND_FIXES.md` — 8 entries, all fixed:
+1. Language switcher not changing displayed text (`setLanguage` never called `i18n.changeLanguage()`).
+2. Supabase client crashed the web server-side render (`window is not defined`).
+3. Assessment screen skipped per-question feedback for all but the last question.
+4. "Check a message" button silently did nothing (the real feature was built afterwards).
+5. Two test-only defects that left the suite red and the type check failing (2026-10-09).
+6. Choosing a language only translated the lesson notes; most of the app stayed in English (2026-10-09).
+7. Finishing lessons never moved a module's progress, so POPIA could never be completed; the streak never increased (2026-10-10).
+8. Home showed "4 badges, 33% complete" to a student who had done nothing: demo values from the first build were still saved on the phone (2026-10-10).
 
-## Likely next steps (pick up here in the new chat)
+## Next steps (pick up here in the new chat)
 
-1. **Human step:** click through the new AI feature in Expo Go or a browser with a real DeepSeek key set — "Check a message" (try a short message, an over-1000-char message, no network) and "Generate SA practice examples" (regenerate a few times, check the examples actually read as SA-context and sensible). Nothing has confirmed any of this against the live API visually yet.
-2. **Human step:** set a spending/rate limit on the DeepSeek dashboard for the API key, given it's reachable directly from the client bundle.
-3. **Human step:** click through the rest of the app — golden path plus edge cases (language switch mid-lesson, capstone fail-then-retake, an out-of-range lesson number, and whether the Online Scams videos play on the module-02 overview and topics 2/3/5/9).
-4. **Human step (when ready):** send more Online Scams topic videos the same way as before — a URL plus which topic number (1-9) it's for, or say if it's another whole-module overview video. Topics 1, 4, 6, 7, 8 still have none.
-5. **Human step:** enable "Allow Anonymous Sign-Ins" in the Supabase dashboard (Authentication → Sign In / Providers) — both DB migrations are confirmed applied now, this is the one remaining toggle before progress/badges/quiz attempts can actually sync.
-6. Once anonymous sign-ins are enabled, re-run the app and confirm progress/badges/quiz attempts actually land in the 4 live tables.
-7. Decide the real auth method, then build the actual sign-up/login flow, migrating anonymous accounts to real ones via `linkIdentity()`.
-8. Resolve the POPIA lawful-basis question before real (non-anonymous) student data goes to Supabase.
-9. Get native-speaker review/translation for: the few new UI chrome strings, the still-English-only `MODULE_TAG`/`MODULE_INTRO` copy and module/lesson titles, and modules 01/03's quiz/drill content — the project's own "Multilingual Content Development" phase. Only proceed on POPIA/Cybercrimes Act *content* itself if the user explicitly supplies source material — they chose to defer it this session.
-10. Consider whether the DeepSeek-backed features should move behind a Supabase Edge Function later, once there's appetite for the extra setup — the direct-from-app approach was a deliberate, informed tradeoff, not a default to keep forever unquestioned.
+1. **Give the build its keys.** `.env` is not in git, so a cloud build has no Supabase or DeepSeek settings and would not work. From `mobile-app/`, for each of the three names in `.env`: `npx eas-cli@latest env:create --name <NAME> --value <value> --environment production --visibility sensitive`. Claude was not permitted to do this.
+2. **Build:** `npx eas-cli@latest build --platform android --profile production`. Answer yes to generating a new Android keystore the first time.
+3. **In the Play Console:** create the app with package `com.cyberawaresa.app`, complete the privacy policy URL, Data safety form and the foreground-service declaration, then upload the `.aab` to Internal testing (or set up a Google service account key and use `npx eas-cli@latest submit --platform android`).
+4. Set a spending limit on the DeepSeek key before testers get the app: the key is inside it.
+5. Get the pull request into `main` reviewed and merged.
+6. Have the user try the app on a real phone: add a name in Profile and see it on Home, answer the three daily questions, turn the reminder on and wait for 18:00; finish a lesson and see the First Steps badge, pass a final assessment, download the certificate PDF and share it.
+7. Replace AI-translated text with native-speaker text as it arrives (each `*-ai.ts` / `*.ai.json` file says what it holds).
+8. Once anonymous sign-ins are enabled in Supabase, confirm progress, badges and quiz attempts land in the four tables.
+9. Choose the real sign-in method and build it, migrating anonymous accounts with `linkIdentity()`; settle the POPIA lawful basis first.
+10. Optional clean-up: delete the dead old quiz screen, and fix the repeated topic names on the Digital Privacy result screen.
 
 ## Repo/collaboration notes
 
-- Remote: `github.com/phetho5/CybersecurityOnlineModules`, branch `main`.
+- Remote: `github.com/phetho5/CybersecurityOnlineModules`. Default branch `main`; current work is on `multilingual-app-and-new-modules`.
+- Last commit: `e56cab8` "Add sourced modules, AI practice features and full multilingual support" (109 files), pushed 2026-10-09. It is one large commit covering several sessions, because the changes were too intertwined to split.
+- **The user does not want Claude listed as a contributor.** Commits carry no co-author line; the author is the user's own git identity (`smoke <vhulendamashamba4@gmail.com>`).
+- `mobile-app/.env` holds the real Supabase and DeepSeek keys and is git-ignored; `.env.example` holds placeholders only. Check that is still true before every commit.
+- The 2026-10-10 work (screenshot checker, certificate, badges, logo, daily questions, reminders, celebration, name, Play setup) is in a second commit on the branch, with a pull request into `main`. The `badges/` folder of original images (14 MB) is included.
 - Team: Phetho Nemavhola (u26855896), Vhulenda Mashamba (u22554883), supervised by Professor Jan Eloff (University of Pretoria, COS700).
-- This session's changes are uncommitted — nothing has been pushed. Review with `git status`/`git diff` before committing.
+- **Working notes for the next session:** run tests with `npx jest --runInBand` (a parallel run times out some screen suites on this machine). In the Bash tool, long here-documents containing apostrophes failed to parse; writing a small script file and running it worked reliably.

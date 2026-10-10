@@ -11,6 +11,7 @@ jest.mock('expo-router', () => ({
 
 const mockGetModule = jest.fn();
 jest.mock('@/data/modules', () => ({
+  ...jest.requireActual('@/data/modules'),
   getModule: (...args: unknown[]) => mockGetModule(...args),
 }));
 
@@ -60,6 +61,12 @@ describe('ResultScreen', () => {
     await waitFor(() => expect(getByText(/digital privacy pro/i)).toBeTruthy());
   });
 
+  it('shows the earned badge’s own picture, not a generic ribbon', async () => {
+    useAppStore.setState({ quizAnswers: { 0: 0, 1: 1 } });
+    const { getByTestId } = await render(<ResultScreen />);
+    await waitFor(() => expect(getByTestId('badge-image-popia-aware')).toBeTruthy());
+  });
+
   it('shows no badge block when the student failed, even though the module has a badge', async () => {
     useAppStore.setState({ quizAnswers: { 0: 1, 1: 0 } });
     const { getByText, queryByText } = await render(<ResultScreen />);
@@ -73,6 +80,46 @@ describe('ResultScreen', () => {
     await waitFor(() => expect(getByText('Retake the assessment')).toBeTruthy());
     await fireEvent.press(getByText('Retake the assessment'));
     expect(mockReplace).toHaveBeenCalledWith('/quiz/03/2');
+  });
+
+  it('issues a certificate carrying the score when the student passes', async () => {
+    useAppStore.setState({ quizAnswers: { 0: 0, 1: 1 }, language: 'zu' });
+    await render(<ResultScreen />);
+    await waitFor(() => expect(useAppStore.getState().certificates['03']).toBeTruthy());
+    expect(useAppStore.getState().certificates['03']).toMatchObject({ moduleId: '03', scorePct: 100, language: 'zu' });
+  });
+
+  it('opens the certificate itself from "View certificate", not the Profile tab', async () => {
+    useAppStore.setState({ quizAnswers: { 0: 0, 1: 1 } });
+    const { getByText } = await render(<ResultScreen />);
+    await waitFor(() => expect(getByText('View certificate')).toBeTruthy());
+    await fireEvent.press(getByText('View certificate'));
+    expect(mockReplace).toHaveBeenCalledWith('/certificate/03');
+  });
+
+  it('issues no certificate and offers no "View certificate" button when the student fails', async () => {
+    useAppStore.setState({ quizAnswers: { 0: 1, 1: 0 } });
+    const { getByText, queryByText } = await render(<ResultScreen />);
+    await waitFor(() => expect(getByText('0%')).toBeTruthy());
+    expect(queryByText('View certificate')).toBeNull();
+    expect(useAppStore.getState().certificates).toEqual({});
+  });
+
+  it('offers no "View certificate" button for a passed module that has no certificate', async () => {
+    mockParams = { id: '01' };
+    mockGetModule.mockReturnValue({ id: '01', title: 'POPIA & Your Personal Data', lessonCount: 3, minutes: 18 });
+    useAppStore.setState({ quizAnswers: { 0: 0, 1: 1 } });
+    const { getByText, queryByText } = await render(<ResultScreen />);
+    await waitFor(() => expect(getByText('100%')).toBeTruthy());
+    expect(queryByText('View certificate')).toBeNull();
+    expect(useAppStore.getState().certificates).toEqual({});
+  });
+
+  it('does not claim the badge is "verifiable" when nothing can verify it', async () => {
+    useAppStore.setState({ quizAnswers: { 0: 0, 1: 1 } });
+    const { getByText, queryByText } = await render(<ResultScreen />);
+    await waitFor(() => expect(getByText(/digital privacy pro/i)).toBeTruthy());
+    expect(queryByText(/verifiable/i)).toBeNull();
   });
 
   it('renders nothing (no crash) for an unknown module id', async () => {

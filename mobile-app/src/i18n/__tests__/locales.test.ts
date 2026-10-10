@@ -124,12 +124,24 @@ describe('interface text: every key the screens ask for exists', () => {
       'aiErrorNetwork',
       'aiErrorInvalidResponse',
       'aiErrorUnexpected',
-      'aiDrillsNoneReturned',
+      'aiErrorImageTooLarge',
+      'aiErrorUnsupportedImage',
+      'aiErrorNoTextFound',
+      'dailyNoNewQuestions',
+      'dailyLoadFailed',
+      'reminderDenied',
+      'reminderOpenSettings',
+      'reminderFailed',
+      'certificateNameRequired',
+      'certificateNameTooShort',
+      'certificateNameTooLong',
+      'certificateExportFailed',
+      'certificateShareUnavailable',
     ];
     expect(runtimeKeys.filter((key) => !(key in en))).toEqual([]);
   });
 
-  it('has a name, tag and description for every module, and a name for every badge, in every language', () => {
+  it('has a name, tag and description for every module, and a name and how-to-earn line for every badge, in every language', () => {
     for (const lang of SUPPORTED_LANGUAGES) {
       const bundle = resources(lang);
       for (const mod of MODULES) {
@@ -138,9 +150,17 @@ describe('interface text: every key the screens ask for exists', () => {
         }
       }
       for (const badge of BADGES) {
-        expect({ lang, key: `badgeName_${badge.id}`, ok: Boolean(bundle[`badgeName_${badge.id}`]) }).toMatchObject({ ok: true });
+        for (const prefix of ['badgeName', 'badgeHow']) {
+          expect({ lang, key: `${prefix}_${badge.id}`, ok: Boolean(bundle[`${prefix}_${badge.id}`]) }).toMatchObject({ ok: true });
+        }
       }
     }
+  });
+
+  it('has no name or how-to-earn line left over for a badge that no longer exists', () => {
+    const ids = new Set(BADGES.map((badge) => badge.id));
+    const leftovers = Object.keys(en).filter((key) => /^badge(Name|How)_/.test(key) && !ids.has(key.replace(/^badge(Name|How)_/, '')));
+    expect(leftovers).toEqual([]);
   });
 
   it('keeps the English module and badge names identical to the catalogue they came from', () => {

@@ -1,8 +1,11 @@
 import {
   checkMessage,
-  DEFAULT_GENERATED_DRILL_COUNT,
-  generateSADrills,
+  checkScreenshot,
+  generateDailyQuestions,
   MESSAGE_CHECK_MAX_LENGTH,
+  SCREENSHOT_MAX_BASE64_LENGTH,
+  SCREENSHOT_MODEL,
+  validateScreenshot,
 } from '@/lib/deepseek';
 
 const ORIGINAL_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY;
@@ -68,44 +71,6 @@ describe('checkMessage — reply language', () => {
   it('still rejects a translated-language reply that breaks the expected shape', async () => {
     mockFetchOnce(chatResponse({ ...validCheck, verdict: 'bofora' }));
     expect(await checkMessage('Send me your PIN', 'nso')).toEqual({ ok: false, error: 'invalid-response' });
-  });
-});
-
-describe('generateSADrills — language', () => {
-  beforeEach(() => {
-    process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY = ORIGINAL_KEY ?? 'test-deepseek-key';
-    globalThis.fetch = jest.fn();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-  afterEach(() => jest.restoreAllMocks());
-
-  it.each(Object.entries(LANGUAGE_NAMES))('asks for the practice messages in the student\'s language (%s)', async (lang, name) => {
-    mockFetchOnce(chatResponse({ drills: [] }));
-    await generateSADrills(3, lang as keyof typeof LANGUAGE_NAMES);
-    expect(sentPrompts().system).toContain(name);
-  });
-
-  it('does not add a language instruction for English, or when no language is given', async () => {
-    mockFetchOnce(chatResponse({ drills: [] }));
-    await generateSADrills();
-    const withoutLanguage = sentPrompts().system;
-    (globalThis.fetch as jest.Mock).mockClear();
-    mockFetchOnce(chatResponse({ drills: [] }));
-    await generateSADrills(3, 'en');
-    expect(sentPrompts().system).toBe(withoutLanguage);
-    for (const name of Object.values(LANGUAGE_NAMES)) expect(withoutLanguage).not.toContain(name);
-  });
-
-  it('tells the model to keep the channel values in English so the app can still read them', async () => {
-    mockFetchOnce(chatResponse({ drills: [] }));
-    await generateSADrills(2, 'zu');
-    expect(sentPrompts().system).toMatch(/"channel"[^.]*must stay/i);
-  });
-
-  it('still clamps the count when a language is given', async () => {
-    mockFetchOnce(chatResponse({ drills: [] }));
-    await generateSADrills(99, 'ts');
-    expect(sentPrompts().user).toContain('5');
   });
 });
 
@@ -222,7 +187,41 @@ describe('checkMessage', () => {
   });
 });
 
-describe('generateSADrills', () => {
+describe('validateScreenshot', () => {
+  it('accepts a JPEG, PNG or WebP image of a sensible size', () => {
+    for (const mimeType of ['image/jpeg', 'image/png', 'image/webp']) {
+      expect(validateScreenshot({ base64: 'aGVsbG8=', mimeType })).toBeNull();
+    }
+  });
+
+  it('accepts an image whose type the phone did not report (the AI service detects it from the file itself)', () => {
+    expect(validateScreenshot({ base64: 'aGVsbG8=' })).toBeNull();
+  });
+
+  it('treats the file type case-insensitively', () => {
+    expect(validateScreenshot({ base64: 'aGVsbG8=', mimeType: 'IMAGE/PNG' })).toBeNull();
+  });
+
+  it('rejects an empty image', () => {
+    expect(validateScreenshot({ base64: '' })).toBe('invalid-input');
+    expect(validateScreenshot({ base64: '   ' })).toBe('invalid-input');
+  });
+
+  it('rejects a file that is not a supported picture type', () => {
+    expect(validateScreenshot({ base64: 'aGVsbG8=', mimeType: 'image/heic' })).toBe('unsupported-image');
+    expect(validateScreenshot({ base64: 'aGVsbG8=', mimeType: 'video/mp4' })).toBe('unsupported-image');
+    expect(validateScreenshot({ base64: 'aGVsbG8=', mimeType: 'application/pdf' })).toBe('unsupported-image');
+  });
+
+  it('accepts an image exactly at the size limit and rejects one just over it', () => {
+    expect(validateScreenshot({ base64: 'a'.repeat(SCREENSHOT_MAX_BASE64_LENGTH), mimeType: 'image/png' })).toBeNull();
+    expect(validateScreenshot({ base64: 'a'.repeat(SCREENSHOT_MAX_BASE64_LENGTH + 1), mimeType: 'image/png' })).toBe(
+      'image-too-large'
+    );
+  });
+});
+
+describe('checkScreenshot', () => {
   beforeEach(() => {
     process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY = ORIGINAL_KEY ?? 'test-deepseek-key';
     globalThis.fetch = jest.fn();
@@ -230,78 +229,269 @@ describe('generateSADrills', () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
-  const validDrill = {
-    channel: 'SMS',
-    from: 'Unknown number',
-    body: 'Your SASSA grant has been paused, click here to reactivate: sassa-reactivate.co.za',
-    isScam: true,
-    explain: 'SASSA never asks you to reactivate a grant via an SMS link.',
-  };
+  const image = { base64: 'aGVsbG8=', mimeType: 'image/png' };
 
-  it('returns a validated list of drills on success', async () => {
-    mockFetchOnce(chatResponse({ drills: [validDrill] }));
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: true, drills: [validDrill] });
+  function sentBody() {
+    return JSON.parse((globalThis.fetch as jest.Mock).mock.calls[0][1].body);
+  }
+
+  it('returns the same verdict/confidence/redFlags/explanation shape as a pasted message', async () => {
+    mockFetchOnce(chatResponse({ ...validCheck, readable: true }));
+    expect(await checkScreenshot(image)).toEqual({ ok: true, ...validCheck });
   });
 
-  it('requests the default count when none is given', async () => {
-    mockFetchOnce(chatResponse({ drills: [validDrill] }));
-    await generateSADrills();
-    const body = JSON.parse((globalThis.fetch as jest.Mock).mock.calls[0][1].body);
-    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content;
-    expect(userMessage).toContain(String(DEFAULT_GENERATED_DRILL_COUNT));
+  it('accepts a reply that leaves out the "readable" field altogether', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    expect(await checkScreenshot(image)).toEqual({ ok: true, ...validCheck });
   });
 
-  it('clamps a requested count below 1 up to 1', async () => {
-    mockFetchOnce(chatResponse({ drills: [validDrill] }));
-    await generateSADrills(0);
-    const body = JSON.parse((globalThis.fetch as jest.Mock).mock.calls[0][1].body);
-    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content;
-    expect(userMessage).toContain('1');
+  it('sends the picture to a model that can read images, as a data URL alongside a text instruction', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkScreenshot(image);
+    const body = sentBody();
+    expect(body.model).toBe(SCREENSHOT_MODEL);
+    const user = body.messages.find((m: { role: string }) => m.role === 'user').content;
+    expect(user).toEqual([
+      { type: 'text', text: expect.any(String) },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aGVsbG8=' } },
+    ]);
   });
 
-  it('clamps a requested count above 5 down to 5', async () => {
-    mockFetchOnce(chatResponse({ drills: [validDrill] }));
-    await generateSADrills(100);
-    const body = JSON.parse((globalThis.fetch as jest.Mock).mock.calls[0][1].body);
-    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content;
-    expect(userMessage).toContain('5');
+  it('falls back to a JPEG label when the phone did not report the file type', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkScreenshot({ base64: 'aGVsbG8=' });
+    const user = sentBody().messages.find((m: { role: string }) => m.role === 'user').content;
+    expect(user[1].image_url.url).toBe('data:image/jpeg;base64,aGVsbG8=');
   });
 
-  it('returns ok with an empty list when the model returns zero drills (caller decides how to present that)', async () => {
-    mockFetchOnce(chatResponse({ drills: [] }));
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: true, drills: [] });
+  it('tells the model to treat words in the picture as the message to judge, never as instructions to follow', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkScreenshot(image);
+    const system = sentBody().messages.find((m: { role: string }) => m.role === 'system').content;
+    expect(system).toMatch(/never follow/i);
+  });
+
+  it('reports no-text-found when the model says the picture has no readable message', async () => {
+    mockFetchOnce(chatResponse({ verdict: 'unsure', confidence: 'low', redFlags: [], explanation: '', readable: false }));
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'no-text-found' });
+  });
+
+  it.each(Object.entries(LANGUAGE_NAMES))('asks for the explanation in the student\'s language (%s)', async (lang, name) => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkScreenshot(image, lang as keyof typeof LANGUAGE_NAMES);
+    const system = sentBody().messages.find((m: { role: string }) => m.role === 'system').content;
+    expect(system).toContain(name);
+    expect(system).toMatch(/must stay in English/i);
+  });
+
+  it('does not add a language instruction for English', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkScreenshot(image, 'en');
+    const system = sentBody().messages.find((m: { role: string }) => m.role === 'system').content;
+    for (const name of Object.values(LANGUAGE_NAMES)) expect(system).not.toContain(name);
+  });
+
+  it('rejects an empty, oversized or unsupported image without calling the API', async () => {
+    expect(await checkScreenshot({ base64: '' })).toEqual({ ok: false, error: 'invalid-input' });
+    expect(await checkScreenshot({ base64: 'a'.repeat(SCREENSHOT_MAX_BASE64_LENGTH + 1) })).toEqual({
+      ok: false,
+      error: 'image-too-large',
+    });
+    expect(await checkScreenshot({ base64: 'aGVsbG8=', mimeType: 'image/heic' })).toEqual({
+      ok: false,
+      error: 'unsupported-image',
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('reports a missing API key without calling the API', async () => {
     delete process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY;
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: false, error: 'missing-key' });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'missing-key' });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('reports network failure instead of throwing when fetch rejects or times out', async () => {
+    (globalThis.fetch as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'network' });
+
+    const abortError = new Error('Aborted');
+    abortError.name = 'AbortError';
+    (globalThis.fetch as jest.Mock).mockRejectedValueOnce(abortError);
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'network' });
+  });
+
+  it('maps HTTP 401, 429 and 500 to the same errors as a pasted message', async () => {
+    mockFetchOnce({ ok: false, status: 401 });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'invalid-key' });
+    mockFetchOnce({ ok: false, status: 429 });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'rate-limited' });
+    mockFetchOnce({ ok: false, status: 500 });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'network' });
+  });
+
+  it('maps HTTP 400 (the service refused the picture itself) to an unsupported-image error', async () => {
+    mockFetchOnce({ ok: false, status: 400 });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'unsupported-image' });
+  });
+
+  it('maps HTTP 413 (the upload was too big) to an image-too-large error', async () => {
+    mockFetchOnce({ ok: false, status: 413 });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'image-too-large' });
+  });
+
+  it('reports invalid-response when the reply is not JSON, or is JSON in the wrong shape', async () => {
+    mockFetchOnce({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'not json' } }] }) });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'invalid-response' });
+    mockFetchOnce(chatResponse({ verdict: 'maybe', confidence: 'high', redFlags: [], explanation: 'x' }));
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'invalid-response' });
+    mockFetchOnce({ ok: true, status: 200, json: async () => ({ choices: [] }) });
+    expect(await checkScreenshot(image)).toEqual({ ok: false, error: 'invalid-response' });
+  });
+
+  it('leaves a pasted-message check on its existing text model', async () => {
+    mockFetchOnce(chatResponse(validCheck));
+    await checkMessage('Send me your PIN');
+    expect(sentBody().model).not.toBe(SCREENSHOT_MODEL);
+  });
+});
+
+describe('generateDailyQuestions', () => {
+  beforeEach(() => {
+    process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY = ORIGINAL_KEY ?? 'test-deepseek-key';
+    globalThis.fetch = jest.fn();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const topics = [
+    { title: 'What is POPIA?', notes: 'POPIA protects personal information such as your ID number.', avoid: ['Which law protects personal information?'] },
+    { title: 'WhatsApp Scams', notes: 'Scammers pretend to be a family member with a new number.', avoid: [] },
+  ];
+  const question = (topic: number, text = 'A company wants your ID number. What should you check first?') => ({
+    topic,
+    text,
+    options: ['Nothing', 'Why they need it', 'Their logo', 'Their age'],
+    correct: 1,
+    explain: 'POPIA says information must be collected for a specific purpose.',
+  });
+
+  it('returns the validated questions on success', async () => {
+    mockFetchOnce(chatResponse({ questions: [question(1), question(2, 'Second?')] }));
+    const result = await generateDailyQuestions(topics);
+    expect(result).toEqual({ ok: true, questions: [question(1), question(2, 'Second?')] });
+  });
+
+  it('sends each topic’s lesson notes, numbered, and tells the model to stay inside them', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics);
+    const { system, user } = sentPrompts();
+    expect(user).toContain('Topic 1: What is POPIA?');
+    expect(user).toContain('POPIA protects personal information such as your ID number.');
+    expect(user).toContain('Topic 2: WhatsApp Scams');
+    expect(user).toContain('Scammers pretend to be a family member with a new number.');
+    expect(system).toMatch(/only[^.]*notes/i);
+  });
+
+  it('lists the questions already asked for a topic so the model does not repeat them', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics);
+    const { system, user } = sentPrompts();
+    expect(user).toContain('Which law protects personal information?');
+    expect(system).toMatch(/already asked/i);
+  });
+
+  it('asks for real-life questions, not a made-up message to judge as a scam', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics);
+    expect(sentPrompts().system).toMatch(/do not write a made-up message/i);
+  });
+
+  it('tells the model not to refer to "the notes", which the student cannot see next to the question', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics);
+    expect(sentPrompts().system).toMatch(/never mention the notes/i);
+  });
+
+  it.each(Object.entries(LANGUAGE_NAMES))('asks for the questions in the student’s language (%s)', async (lang, name) => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics, lang as keyof typeof LANGUAGE_NAMES);
+    expect(sentPrompts().system).toContain(name);
+  });
+
+  it('adds no language instruction for English', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    await generateDailyQuestions(topics, 'en');
+    for (const name of Object.values(LANGUAGE_NAMES)) expect(sentPrompts().system).not.toContain(name);
+  });
+
+  it('drops a malformed question but keeps the good ones, instead of throwing the whole reply away', async () => {
+    mockFetchOnce(
+      chatResponse({
+        questions: [
+          question(1),
+          { topic: 1, text: 'No options?' },
+          { ...question(1), options: ['a', 'b', 'c'] },
+          { ...question(1), options: ['a', 'b', 'c', 'd', 'e'] },
+          { ...question(1), correct: 4 },
+          { ...question(1), correct: -1 },
+          { ...question(1), correct: 1.5 },
+          { ...question(1), text: '   ' },
+          { ...question(1), options: ['same', 'same', 'c', 'd'] },
+          { ...question(1), options: ['a', '', 'c', 'd'] },
+          { ...question(1), topic: 'one' },
+          null,
+        ],
+      })
+    );
+    const result = await generateDailyQuestions(topics);
+    expect(result).toEqual({ ok: true, questions: [question(1)] });
+  });
+
+  it('tidies stray spaces around the question and its options', async () => {
+    mockFetchOnce(chatResponse({ questions: [{ ...question(1), text: '  Padded?  ', options: [' a ', 'b', 'c', 'd'] }] }));
+    const result = await generateDailyQuestions(topics);
+    expect(result).toMatchObject({ ok: true, questions: [{ text: 'Padded?', options: ['a', 'b', 'c', 'd'] }] });
+  });
+
+  it('accepts a question with no explanation', async () => {
+    const { explain: _explain, ...bare } = question(1);
+    mockFetchOnce(chatResponse({ questions: [bare] }));
+    const result = await generateDailyQuestions(topics);
+    expect(result).toMatchObject({ ok: true, questions: [{ text: bare.text, explain: '' }] });
+  });
+
+  it('returns ok with an empty list when the model writes no questions (the caller falls back to the notes)', async () => {
+    mockFetchOnce(chatResponse({ questions: [] }));
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: true, questions: [] });
+  });
+
+  it('refuses to call the API with no topics', async () => {
+    expect(await generateDailyQuestions([])).toEqual({ ok: false, error: 'invalid-input' });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('reports a missing API key without calling the API', async () => {
+    delete process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY;
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'missing-key' });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('reports network failure instead of throwing when fetch rejects', async () => {
     (globalThis.fetch as jest.Mock).mockRejectedValueOnce(new Error('offline'));
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: false, error: 'network' });
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'network' });
   });
 
-  it('maps HTTP 429 to a rate-limited error', async () => {
+  it('maps HTTP 429 to a rate-limited error and 401 to an invalid key', async () => {
     mockFetchOnce({ ok: false, status: 429 });
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: false, error: 'rate-limited' });
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'rate-limited' });
+    mockFetchOnce({ ok: false, status: 401 });
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'invalid-key' });
   });
 
-  it('reports invalid-response when a drill in the array is missing required fields', async () => {
-    mockFetchOnce(chatResponse({ drills: [{ channel: 'SMS', from: 'x' }] }));
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: false, error: 'invalid-response' });
-  });
-
-  it('reports invalid-response when the top-level shape is not an object with a drills array', async () => {
-    mockFetchOnce(chatResponse([validDrill]));
-    const result = await generateSADrills();
-    expect(result).toEqual({ ok: false, error: 'invalid-response' });
+  it('reports invalid-response when the reply is not an object with a questions list, or is not JSON at all', async () => {
+    mockFetchOnce(chatResponse([question(1)]));
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'invalid-response' });
+    mockFetchOnce({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'Sure! Here you go' } }] }) });
+    expect(await generateDailyQuestions(topics)).toEqual({ ok: false, error: 'invalid-response' });
   });
 });

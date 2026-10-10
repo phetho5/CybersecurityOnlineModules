@@ -116,8 +116,9 @@ describe.each(LANGUAGES)('the whole app follows the chosen language: %s', (lang)
   it('Profile shows the certificate and the language switcher labels in that language', async () => {
     useAppStore.setState({ earnedBadgeIds: ['scam-spotter'] });
     const { getByText, getAllByText, queryByText } = await render(<ProfileScreen />);
-    expect(getByText(tr(lang, 'certificateTitle'))).toBeTruthy();
     expect(getByText(tr(lang, 'certificateBody', { module: tr(lang, 'moduleTitle_02') }))).toBeTruthy();
+    expect(getByText(tr(lang, 'certificateLocked'))).toBeTruthy();
+    expect(queryByText('Pass the final assessment to earn it')).toBeNull();
     expect(getByText(tr(lang, 'languageSelected'))).toBeTruthy();
     expect(getAllByText(tr(lang, 'languageSwitch')).length).toBe(3);
     expect(queryByText('Certificate of Completion')).toBeNull();

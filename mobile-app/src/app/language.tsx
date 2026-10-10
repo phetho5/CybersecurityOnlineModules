@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/brand-logo';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
 import { LANGUAGE_META, SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
 import { useAppStore } from '@/store/useAppStore';
@@ -17,6 +18,7 @@ export default function LanguageScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.content}>
+        <BrandLogo size={56} decorative />
         <Text style={styles.kicker}>CyberAware SA</Text>
         <View style={styles.rule} />
         <Text style={styles.heading}>Choose your learning language</Text>
@@ -49,6 +51,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: Colors.accent700,
+    marginTop: Spacing.md,
   },
   rule: { height: 2, backgroundColor: Colors.text, marginVertical: Spacing.md },
   heading: { fontFamily: Fonts.heading, fontWeight: '800', fontSize: 32, lineHeight: 36, color: Colors.text },

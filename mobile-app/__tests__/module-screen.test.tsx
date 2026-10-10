@@ -19,6 +19,7 @@ jest.mock('@/components/video-player', () => ({
 
 const mockGetModule = jest.fn();
 jest.mock('@/data/modules', () => ({
+  ...jest.requireActual('@/data/modules'),
   getModule: (...args: unknown[]) => mockGetModule(...args),
 }));
 

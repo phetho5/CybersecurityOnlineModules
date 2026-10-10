@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Icon } from '@/components/icon';
+import { BadgeImage } from '@/components/badge-tile';
 import { PrimaryButton } from '@/components/primary-button';
-import { Colors, Fonts, Radii, Spacing } from '@/constants/theme';
+import { Colors, Fonts, Spacing } from '@/constants/theme';
 import { BADGES, MODULE_BADGE_ID } from '@/data/badges';
 import { getModule } from '@/data/modules';
 import { PASS_MARK } from '@/data/quiz';
 import type { LanguageCode } from '@/i18n';
+import { hasCertificate } from '@/lib/certificate';
 import { scoreQuiz } from '@/lib/scoring';
 import { recordQuizAttempt } from '@/lib/sync';
 import { getModuleFinalAssessment } from '@/lib/topic-source';
@@ -32,7 +33,7 @@ export default function ResultScreen() {
 
   useEffect(() => {
     if (passed && mod) {
-      completeModule(mod.id, badgeId);
+      completeModule(mod.id, badgeId, scorePct);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passed]);
@@ -68,13 +69,10 @@ export default function ResultScreen() {
 
         {passed && badge && (
           <View style={styles.badgeRow}>
-            <View style={styles.badgeIcon}>
-              <Icon name="ribbon" size={28} color={Colors.text} />
-            </View>
+            <BadgeImage badge={badge} size={72} />
             <View style={{ flex: 1 }}>
               <Text style={styles.badgeKicker}>{t('badgeEarned')}</Text>
               <Text style={styles.badgeName}>{t(`badgeName_${badge.id}`, { defaultValue: badge.name })}</Text>
-              <Text style={styles.badgeMeta}>{t('badgeVerifiable')}</Text>
             </View>
           </View>
         )}
@@ -91,8 +89,8 @@ export default function ResultScreen() {
           ))}
 
           <View style={styles.actions}>
-            {passed && (
-              <PrimaryButton label={t('viewCertificate')} onPress={() => router.replace('/(tabs)/profile')} />
+            {passed && hasCertificate(mod.id) && (
+              <PrimaryButton label={t('viewCertificate')} onPress={() => router.replace(`/certificate/${mod.id}`)} />
             )}
             <PrimaryButton
               label={passed ? t('backToModules') : t('retakeAssessment')}
@@ -138,16 +136,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: Colors.divider,
   },
-  badgeIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: Radii.md,
-    borderWidth: 2,
-    borderColor: Colors.text,
-    backgroundColor: Colors.neutral100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   badgeKicker: {
     fontFamily: Fonts.heading,
     fontWeight: '800',
@@ -157,7 +145,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   badgeName: { fontFamily: Fonts.heading, fontWeight: '800', fontSize: 19, color: Colors.text, marginTop: 4 },
-  badgeMeta: { fontFamily: Fonts.body, fontSize: 11, color: Colors.textMuted, marginTop: 4 },
   breakdownSection: { padding: Spacing.lg, gap: Spacing.sm },
   breakdownTitle: {
     fontFamily: Fonts.heading,
