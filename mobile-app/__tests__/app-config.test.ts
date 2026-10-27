@@ -114,3 +114,45 @@ describe('app.json and eas.json: ready for a Google Play build', () => {
     expect(eas().submit.production.android.serviceAccountKeyPath).toBeUndefined();
   });
 });
+
+describe('app.json and eas.json: ready for an App Store build', () => {
+  const pluginOptions = (name: string) =>
+    (expo.plugins as unknown[]).find(
+      (plugin): plugin is [string, Record<string, unknown>] => Array.isArray(plugin) && plugin[0] === name
+    )?.[1];
+
+  it('has a valid bundle identifier, which Apple needs and which can never change once published', () => {
+    expect(expo.ios?.bundleIdentifier).toBe('com.cyberawaresa.app');
+    expect(expo.ios.bundleIdentifier).toMatch(/^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$/);
+  });
+
+  it('answers the export-compliance question up front: the app only uses ordinary HTTPS', () => {
+    expect(expo.ios?.infoPlist?.ITSAppUsesNonExemptEncryption).toBe(false);
+  });
+
+  it('is an iPhone app, so the App Store does not demand iPad screenshots', () => {
+    expect(expo.ios?.supportsTablet).not.toBe(true);
+  });
+
+  it('says why it opens the photo library, which Apple rejects apps for leaving vague', () => {
+    const reason = pluginOptions('expo-image-picker')?.photosPermission;
+    expect(typeof reason).toBe('string');
+    expect(reason).toMatch(/screenshot/i);
+    expect((reason as string).length).toBeGreaterThanOrEqual(40);
+  });
+
+  it('does not claim the camera or the microphone: the app never takes pictures or records', () => {
+    expect(pluginOptions('expo-image-picker')?.cameraPermission).toBe(false);
+    expect(pluginOptions('expo-image-picker')?.microphonePermission).toBe(false);
+    expect(pluginOptions('expo-audio')?.microphonePermission).toBe(false);
+  });
+
+  it('still plays lesson audio in the background', () => {
+    expect(pluginOptions('expo-audio')?.enableBackgroundPlayback).toBe(true);
+  });
+
+  it('keeps Apple sign-in details out of eas.json', () => {
+    const ios = JSON.parse(fs.readFileSync(path.join(APP_ROOT, 'eas.json'), 'utf8')).submit.production.ios ?? {};
+    expect(Object.keys(ios).filter((key) => /password|ascApiKeyPath/i.test(key))).toEqual([]);
+  });
+});

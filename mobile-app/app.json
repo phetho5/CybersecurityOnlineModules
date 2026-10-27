@@ -7,6 +7,13 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.cyberawaresa.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
     "android": {
       "package": "com.cyberawaresa.app",
       "adaptiveIcon": {
@@ -40,7 +47,16 @@
       [
         "expo-audio",
         {
-          "enableBackgroundPlayback": true
+          "enableBackgroundPlayback": true,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CyberAware SA opens your photos so you can choose a screenshot of a suspicious message to check.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       "expo-asset",

@@ -130,3 +130,20 @@ The moment `answerQuestion(qi, i)` recorded an answer, `answeredCount` increment
 **What cannot be recovered:** if a student with the demo 60% had really finished POPIA lesson 1 (34%), the app kept the larger demo number, so that one lesson's progress is gone with it. Finishing lesson 2 or more was recorded properly and is kept.
 
 **Tests:** `src/lib/__tests__/saved-state.test.ts`, the "what is saved on the phone" block in `src/store/__tests__/useAppStore.test.ts` (both demo cases failed against the old code before the fix), and `__tests__/home-screen.test.tsx`. Verified in a browser by loading the exact saved state from the report: Home showed 0 day streak, 0 badges, 0% complete.
+
+
+---
+
+## 9. Lesson videos do not open in the TestFlight build
+
+**Found:** 2026-10-11, reported by the user: "the videos are not opening in the app in TestFlight".
+
+**Symptom:** the Online Scams overview video and the videos in topics 2, 3, 5 and 9 do not play.
+
+**Root cause:** not the app. All five videos are served from the Supabase project `rihrkegrzlmlllldbpfl.supabase.co`, and that address no longer exists on the internet: a lookup against two public name servers (8.8.8.8 and 1.1.1.1) on 2026-10-11 answered "non-existent domain", while `supabase.com` itself answered normally. So the project is paused or deleted. The same name-lookup failure was seen for the sign-in on 2026-10-10 and noted in `HANDOFF.md` but not followed up. It affects every copy of the app (Expo Go, Android, iPhone), not only TestFlight, and it also stops progress, badges and quiz attempts reaching the database.
+
+**Fix:** the project was back online at the same address when checked again later on 2026-10-11 (`LESSON.mp4` and `WHATSAPP SCAM.mp4` both answered 200 as `video/mp4`), so the existing builds work again. Playback on a phone was not confirmed by Claude. What was needed: restore the project in the Supabase dashboard, then confirm the `lesson-media` bucket still holds the five files. No app change or new build is needed if the project comes back at the same address. If it comes back at a new address, or the files are gone, the links in `src/data/modules.ts` and `src/data/lessons.ts` and the two Supabase keys must be updated and a new build made.
+
+**To stop it happening again:** Supabase pauses free projects that see no activity for about a week. Either move the project to a paid plan for the study period, or host the videos somewhere that does not pause.
+
+**Tests:** none added; no code changed.
