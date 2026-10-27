@@ -2,7 +2,60 @@
 
 Snapshot of where this project stands, so a new chat can pick up without re-deriving context. Update this every 10-15 messages.
 
-**Last updated:** 2026-10-10 (night). Everything up to and including the name in Profile and the Play Store build setup is committed on the branch `multilingual-app-and-new-modules`, with a pull request open into `main`. Start with the first section, then "Open items" and "Next steps" at the bottom.
+**Last updated:** 2026-10-27 (evening). The app is built for both stores and on TestFlight. Everything up to and including the two new scenario videos (POPIA topic 2, Digital Privacy topic 1) is committed and pushed to `multilingual-app-and-new-modules`. **The store builds do not have the videos yet**; the user said they will rebuild themselves. Start with the first two sections, then "Open items" and "Next steps" at the bottom.
+
+## 2026-10-25 to 2026-10-27: planning scenario videos for POPIA and Digital Privacy (no code changed)
+
+The user wants short dramatised videos (no narrator) for the two modules that have none. Claude wrote the video-tool prompts and the editing briefs; the user generates the clips. Nothing in the app, its tests or its config was touched.
+
+**The videos:**
+
+| Video | Goes in | Story | Status |
+|---|---|---|---|
+| "Lerato's POPIA rights" | POPIA (01), topic 2 "Your Rights as a Data Subject" | The topic's own "Spot the Rights Violation" scenario: Lerato signs up to a budgeting app, is never told how her data is used, her details reach a loan company, she gets loan calls and promotional messages, the app refuses to tell her what it shared. Ends on "Which of Lerato's rights were violated?" The three violations are shown but deliberately **not named**, because the lesson asks students to find them. | **Done and in the app (2026-10-27):** uploaded as `lesson-media/POPIA.mp4` (17 MB), shown in POPIA topic 2 in every language (`POPIA_VIDEO_URLS` in `src/data/lessons.ts`). Not in any store build yet. Claude has not watched it. |
+| "Who Is Using My Name?" | Digital Privacy (03), topic 1 "How Your Data Gets Misused" | **The user's own story, not from the notes:** Thabo posts a public birthday selfie and sends his ID photo to a group chat; a hooded criminal copies his details, makes a fake profile in his name, asks his family and friends for money in an "emergency", then blocks them and deletes the account. The notes support the idea ("impersonate you online"), but the story is the researchers' own; the report should say so. | **Done and in the app (2026-10-27):** uploaded as `lesson-media/Digital%20Privacy.mp4` (46 MB, close to the 50 MB limit), shown in Digital Privacy topic 1 in every language (`DIGITAL_PRIVACY_VIDEO_URLS` in `src/data/lessons.ts`). Not in any store build yet. Claude has not watched it, so whether clips 8–10 and the end card made the final cut is not known. (Earlier: the user generated clips 1–7; Claude suggested clips 8–10 and an end card "How could Thabo have protected his identity?".) |
+| Sipho, "The WhatsApp Group Mistake" | Digital Privacy (03), topic 1 | The notes' own scenario. Offered as an outline (10 clips, plus an optional "what he should have done" replay); the user went with Thabo instead. | Not started. |
+
+- **Content rules kept:** the stories add no consequences or advice that the notes do not contain (no fraud in Lerato's story; no police case, platform reporting, credit report or fraud alert in Thabo's). Those real-world steps were mentioned to the user as candidates for the notes, with a source, not for the videos.
+- **Editing briefs** for both videos were written in chat for "another Claude" to do the edit. They hold: clip order, the on-screen text to add (title card, "One month later" / "A few days later", subtitles, the fake emergency message as a chat bubble, end card), no narration, nothing that names the answers, blur any garbled text, logos or readable ID details, and report clips to regenerate. Output: MP4 (H.264/AAC), **16:9** (the app's `VideoPlayer` is fixed at 16:9), subtitles **burned in** (the player cannot load a subtitle file), under 50 MB, named `popia-topic2-rights-violation.mp4` and `digital-privacy-topic1-identity-theft.mp4`. The 50 MB is Supabase's free-plan per-file upload limit as Claude remembered it, not checked.
+- **Known weakness of the user's Thabo prompts:** clips 2 and 4–7 say "continuing from where we left off" and dropped the style, character and "no text, no logos, blurred" lines. Unless Flow's Extend was used, the hooded figure and room may differ between clips, and the laptop close-ups (5, 6) will likely show garbled text or a real-looking platform design. Check before editing.
+
+**Tools discussed:**
+- **Google Flow** (Veo 3.1) is the plan: free tier reported at 50 credits a day (review sites, not Google), Scenebuilder to join clips, characters to keep a person consistent. Whether it is available in South Africa was not confirmed.
+- **LTX (open source) cannot run on this laptop:** Intel integrated graphics, 16 GB RAM, no NVIDIA card. Free LTX demo Spaces exist on Hugging Face (`Lightricks/LTX-2-3`, `Lightricks/ltx-2-distilled`) with a small daily allowance; renting a GPU was estimated at roughly $1–6 in total. Single 60-second open-source generations (long-form LTX, FramePack, SkyReels V2) were advised against: one continuous shot cannot cut between the story's locations, and FramePack has no sound.
+- **Remotion** (video editing in React code) can run here: Node 24.19 and FFmpeg 9.0.2 (winget, `Gyan.FFmpeg`) are installed. Claude offered to do the edits itself in a separate `video/` folder outside `mobile-app/`, keeping clips and renders out of git. Claude can check frames (extracted with FFmpeg) but cannot hear audio, so a human must watch the final cut for subtitle timing. Remotion's licence is believed free for individuals and small teams; check before publishing. Not set up yet.
+
+**Putting a finished video in the app:** `src/data/lessons.ts` maps videos per topic: `ONLINE_SCAMS_VIDEO_URLS` (module 02) and `POPIA_VIDEO_URLS` (module 01, added 2026-10-27, tests in `src/data/__tests__/lessons.test.ts`). `DIGITAL_PRIVACY_VIDEO_URLS` (module 03, added the same day). After both changes: tsc clean, lint 0 errors, 994 tests across 46 suites passing. After the POPIA change alone: 990 (one full run had 1 failure in `practice-screen.test.tsx`, which passed alone and in a second full run; the same flakiness noted on 2026-10-10). `TopicLesson` already renders `videoUrl` above the key takeaway for every module. No over-the-air updates exist, so the new links reach phones only through a new build on both stores.
+
+## 2026-10-11: deployed to TestFlight and built for Google Play
+
+The user asked to deploy on both the Apple App Store and Google Play.
+
+**iPhone setup (tests first, `__tests__/app-config.test.ts`, 7 new):**
+- `app.json` `ios`: bundle identifier `com.cyberawaresa.app` (Claude's choice, same as the Android package; **now registered with Apple, so permanent**), `supportsTablet: false` (iPhone only, so no iPad screenshots), and `ITSAppUsesNonExemptEncryption: false` (answers Apple's export question; the app only uses ordinary HTTPS).
+- `expo-image-picker` plugin added with a specific reason for opening the photo library, and camera and microphone turned off. `expo-audio` has `microphonePermission: false`. Checked with `npx expo config --type introspect`: iPhone asks only for photos; Android removes camera and microphone.
+- **Verified:** config tests 25 of 25, `npx tsc --noEmit` clean, `npm run lint` 0 errors. The full suite was not re-run (only `app.json` and its test changed).
+
+**Build keys:** the three `.env` values (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_DEEPSEEK_API_KEY`) are in the EAS `production` environment as sensitive variables. The user told Claude to add them; Claude did, without printing the values. The `preview` environment has none. If a key changes, update it there too (`npx eas-cli@latest env:update`).
+
+**What exists now (checked on EAS 2026-10-25):**
+
+| | Build | Store |
+|---|---|---|
+| Android | production, version 1.0.0, version code 3, finished 2026-10-11 | App created in the Play Console with package `com.cyberawaresa.app` (the user showed the form; whether the `.aab` was uploaded is not known) |
+| iPhone | production, version 1.0.0, build number 4, finished 2026-10-11 | Submitted to App Store Connect (app id `6821608392`, name CyberAware SA, primary language English (U.K.)); installed and tested by the user through TestFlight |
+
+- Both builds record commit `d0f06d7`, but they were made from the working folder, which held the uncommitted iPhone changes (the iPhone build could not have been signed without the bundle identifier). So **the store builds contain code that is not in git**. Commit it.
+- Version code 2 was used up by a run the user cancelled after answering "no" to generating a keystore. A rerun answered yes; EAS now holds the Android keystore. Every later Android build must use it.
+- **Google Play's first upload must be done by hand** in the Play Console (Internal testing, Create new release); Google does not accept a new app's first build from `eas submit`. Later uploads can use `npx eas-cli@latest submit --platform android --latest`, which needs a Google service account key with access to this app. When the user ran it, EAS offered three keys from their other projects (two `firebase-adminsdk` keys for `amsa-mobile` and `skoolgo`, one compute key for `amsa-lms`). Claude advised not to pick them; none is known to have Play Console access to CyberAware SA.
+- Advice given, nothing changed: how TestFlight invitations work (internal testers with no review; external testers or a public link after Beta App Review; the public link was recommended for students), and how to give a friend developer access (free accounts plus invitations on GitHub, Expo, App Store Connect, the Play Console and Supabase; the Expo project is under the personal account `vhulenda`, so sharing it means moving it to an Expo organisation).
+
+**Bug #9 (read it in `BUGS_AND_FIXES.md`): the videos did not open in TestFlight.** The Supabase project was paused: its address did not exist at all. It was back online when checked later the same day, and the videos answer again. Supabase pauses free projects after about a week with no activity, so it can happen again in the middle of the study. Recommended: a paid plan for the study period, or another video host. Not decided.
+
+**Waiting on the user: a new video for the WhatsApp scam lesson.** The user asked to add one and then push. Claude asked for two things, not yet answered: the public link to the uploaded file, and whether it replaces the current video in topic 2 (`WHATSAPP SCAM.mp4`), is added beside it, or goes in another lesson.
+- **Replacing:** upload the new file over the old one with exactly the same name. No code change, no rebuild; installed apps show it once caches clear.
+- **Adding a new link:** the video links are written into the app (`ONLINE_SCAMS_VIDEO_URLS` in `src/data/lessons.ts`), and `expo-updates` is not installed, so it needs a new build and submission on both stores. A topic holds one video today, so a second video in topic 2 also needs a small change to `TopicLesson` (tests first).
+- Claude offered to set up over-the-air updates (`expo-updates`): one more rebuild, after which changes like this go out without a store submission. Not decided.
 
 ## 2026-10-10 (night): name in Profile, and Play Store build setup
 
@@ -384,13 +437,15 @@ The user said "remove all the placeholder data, I want real data." Two different
 - **Decide what `CLAUDE.md` should say about translation.** It still says "do not invent translations", and its "Translation scope (current)" row describes the app as mostly English. Both are out of date after this session. It was left untouched because it is the user's standing policy.
 - **Confirm one isiZulu heading with the translator:** "Ngeminingwane" in `digital-privacy-topics-zu.ts` is a letter-for-letter conversion of Cyrillic characters in the notes and is probably a typo for "Ngemininingwane".
 - **Decide whether the source notes belong on GitHub.** The PDFs and Word files in `POPIA/`, `online scams/`, `Zulu Notes/` and `Tsonga Notes/` were committed. If the repository is public and they should not be, they need removing.
-- **Check the app on a real phone** in each language (Expo Go). The only hands-on check so far was a desktop browser at phone size.
+- **Check the app on a real phone** in each language. The user now has the iPhone build through TestFlight (2026-10-11) and reported only the video problem (bug #9); no full pass through the app on a phone has been reported yet.
 - **Enable "Allow Anonymous Sign-Ins"** in the Supabase dashboard (Authentication → Sign In / Providers). Last confirmed disabled on 2026-09-30, and the browser check on 2026-10-09 still showed the sign-in failing. Until then no progress, badges or quiz attempts reach the database.
 - **Set a spending/rate limit on the DeepSeek key.** It ships inside the app, so anyone can extract it. Not known to have been done.
 - **Free port 8081 if Expo misbehaves.** A `node.exe` (PID 41152 on 2026-10-09) was holding it without answering requests. Claude did not start it and left it alone.
-- **More Online Scams videos.** Topics 1, 4, 6, 7 and 8 have none; POPIA and Digital Privacy have no video or audio at all. Upload to the `lesson-media` bucket and pass the public URL plus the topic number.
+- **More Online Scams videos.** Topics 1, 4, 6, 7 and 8 have none. POPIA and Digital Privacy have no video or audio in the app yet; two are being made (see the first section). Upload to the `lesson-media` bucket and pass the public URL plus the module and topic number.
 
 **Decisions not yet made:**
+- **Keeping Supabase awake during the study** (bug #9): a paid plan for the study period, or moving the videos to a host that does not pause.
+- **Whether to add over-the-air updates** (`expo-updates`), so content changes such as new video links reach installed apps without a store submission.
 - **Real sign-in method** (email/password, university-domain-restricted, or magic link). Anonymous auth loses a student's progress if they reinstall.
 - **POPIA lawful basis for Supabase.** It has no South African hosting region; this must be documented before real, identifiable student data is stored.
 - **Whether a student's typed certificate name should ever leave the phone.** Today it does not. If certificates are later synced or made verifiable, the name becomes personal information held on Supabase and falls under the POPIA question above.
@@ -418,7 +473,7 @@ To add one: put its image in `mobile-app/assets/images/badges/`, add it to `BADG
 
 ## Known bugs
 
-See `BUGS_AND_FIXES.md` — 8 entries, all fixed:
+See `BUGS_AND_FIXES.md` — 9 entries, all fixed:
 1. Language switcher not changing displayed text (`setLanguage` never called `i18n.changeLanguage()`).
 2. Supabase client crashed the web server-side render (`window is not defined`).
 3. Assessment screen skipped per-question feedback for all but the last question.
@@ -427,12 +482,13 @@ See `BUGS_AND_FIXES.md` — 8 entries, all fixed:
 6. Choosing a language only translated the lesson notes; most of the app stayed in English (2026-10-09).
 7. Finishing lessons never moved a module's progress, so POPIA could never be completed; the streak never increased (2026-10-10).
 8. Home showed "4 badges, 33% complete" to a student who had done nothing: demo values from the first build were still saved on the phone (2026-10-10).
+9. Videos did not open in the TestFlight build: the Supabase project was paused. Back online the same day; no code changed (2026-10-11).
 
 ## Next steps (pick up here in the new chat)
 
-1. **Give the build its keys.** `.env` is not in git, so a cloud build has no Supabase or DeepSeek settings and would not work. From `mobile-app/`, for each of the three names in `.env`: `npx eas-cli@latest env:create --name <NAME> --value <value> --environment production --visibility sensitive`. Claude was not permitted to do this.
-2. **Build:** `npx eas-cli@latest build --platform android --profile production`. Answer yes to generating a new Android keystore the first time.
-3. **In the Play Console:** create the app with package `com.cyberawaresa.app`, complete the privacy policy URL, Data safety form and the foreground-service declaration, then upload the `.aab` to Internal testing (or set up a Google service account key and use `npx eas-cli@latest submit --platform android`).
+1. **Rebuild and submit so the two new videos reach phones** (the user is doing this themselves, 2026-10-27): `npx eas-cli@latest build --platform all --profile production` from `mobile-app/`, then the iPhone build to TestFlight and the Android build by hand to the Play Console. Ask whether it was done, and whether the videos play on TestFlight.
+2. **Videos still open:** the WhatsApp scam video (get the link and the placement from the user, see the 2026-10-11 section). Nobody but the user has watched the two new videos; the Thabo one is 46 MB, heavy on mobile data.
+3. **Google Play:** if not done, upload the version code 3 `.aab` by hand to Internal testing, and add testers. Before any public release: privacy policy URL, Data safety form, and the foreground-service (background audio) declaration. A personal developer account created after November 2023 must run a closed test with at least 12 testers for 14 days before it can publish to production.
 4. Set a spending limit on the DeepSeek key before testers get the app: the key is inside it.
 5. Get the pull request into `main` reviewed and merged.
 6. Have the user try the app on a real phone: add a name in Profile and see it on Home, answer the three daily questions, turn the reminder on and wait for 18:00; finish a lesson and see the First Steps badge, pass a final assessment, download the certificate PDF and share it.

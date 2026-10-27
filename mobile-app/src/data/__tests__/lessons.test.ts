@@ -31,10 +31,58 @@ describe('getLessons', () => {
   });
 
   it('leaves videoUrl/audioUrl undefined for lessons with no media yet, rather than fabricating a value', () => {
+    for (const lesson of [getLesson('01', 1), getLesson('01', 3), getLesson('02', 1), getLesson('03', 2)]) {
+      expect(lesson?.videoUrl).toBeUndefined();
+      expect(lesson?.audioUrl).toBeUndefined();
+    }
+  });
+
+  it("sets Thabo's identity theft video on Digital Privacy topic 1 (How Your Data Gets Misused) only", () => {
+    const lessons = getLessons('03');
+    expect(lessons[0].videoUrl).toBe(
+      'https://rihrkegrzlmlllldbpfl.supabase.co/storage/v1/object/public/lesson-media/Digital%20Privacy.mp4'
+    );
+    expect(lessons[1].videoUrl).toBeUndefined();
+  });
+
+  it('gives Digital Privacy no audio, since none has been supplied', () => {
+    for (const lesson of getLessons('03')) expect(lesson.audioUrl).toBeUndefined();
+  });
+
+  it('shows the Digital Privacy video in every language, since it has no narration', () => {
+    for (const lang of ['zu', 'nso', 'ts'] as const) {
+      expect(getLesson('03', 1, lang)?.videoUrl).toContain('lesson-media/Digital%20Privacy.mp4');
+    }
+  });
+
+  it('does not put the Digital Privacy video on any other module', () => {
+    for (const moduleId of ['01', '02']) {
+      for (const lesson of getLessons(moduleId)) expect(lesson.videoUrl ?? '').not.toContain('Digital%20Privacy.mp4');
+    }
+  });
+
+  it("sets Lerato's POPIA video on POPIA topic 2 (Your Rights as a Data Subject) only", () => {
     const lessons = getLessons('01');
-    for (const lesson of lessons) {
-      expect(lesson.videoUrl).toBeUndefined();
-      expect(lesson.audioUrl).toBeUndefined();
+    expect(lessons[1].videoUrl).toBe(
+      'https://rihrkegrzlmlllldbpfl.supabase.co/storage/v1/object/public/lesson-media/POPIA.mp4'
+    );
+    expect(lessons[0].videoUrl).toBeUndefined();
+    expect(lessons[2].videoUrl).toBeUndefined();
+  });
+
+  it('gives POPIA no audio, since none has been supplied', () => {
+    for (const lesson of getLessons('01')) expect(lesson.audioUrl).toBeUndefined();
+  });
+
+  it('shows the POPIA video in every language, since it has no narration', () => {
+    for (const lang of ['zu', 'nso', 'ts'] as const) {
+      expect(getLesson('01', 2, lang)?.videoUrl).toContain('lesson-media/POPIA.mp4');
+    }
+  });
+
+  it('does not put the POPIA video on any other module', () => {
+    for (const moduleId of ['02', '03']) {
+      for (const lesson of getLessons(moduleId)) expect(lesson.videoUrl ?? '').not.toContain('POPIA.mp4');
     }
   });
 

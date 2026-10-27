@@ -33,18 +33,32 @@ const ONLINE_SCAMS_VIDEO_URLS: Record<number, string> = {
 // Rendered under that topic's video (or in its place, if there is none) — see TopicLesson.
 const ONLINE_SCAMS_AUDIO_URLS: Record<number, string> = {};
 
+// Topic number (1-3) -> real uploaded video URL. Topic 2 is the dramatised "Spot the Rights
+// Violation" scenario (Lerato); it has no narration, so the same file serves every language.
+const POPIA_VIDEO_URLS: Record<number, string> = {
+  2: 'https://rihrkegrzlmlllldbpfl.supabase.co/storage/v1/object/public/lesson-media/POPIA.mp4',
+};
+
+// Topic number (1-2) -> real uploaded video URL. Topic 1 is the dramatised identity theft story
+// (Thabo), the researchers' own scenario; it has no narration, so the same file serves every language.
+const DIGITAL_PRIVACY_VIDEO_URLS: Record<number, string> = {
+  1: 'https://rihrkegrzlmlllldbpfl.supabase.co/storage/v1/object/public/lesson-media/Digital%20Privacy.mp4',
+};
+
 // Titles for all three modules come from their sourced topic content, not invented here, so the
-// module list and the lesson content can never drift out of sync. No video/audio exists yet for
-// POPIA (01) or Digital Privacy (03) — only Online Scams (02) has real uploaded media so far.
+// module list and the lesson content can never drift out of sync.
 const LESSON_SEEDS: Record<string, LessonSeed[]> = {
-  '01': POPIA_TOPIC_CONTENT.map((topic) => ({ title: topic.title })),
+  '01': POPIA_TOPIC_CONTENT.map((topic) => ({ title: topic.title, videoUrl: POPIA_VIDEO_URLS[topic.n] })),
   // Video URLs are keyed by topic number (1-9), supplied real per-lesson.
   '02': TOPIC_CONTENT.en.map((topic) => ({
     title: topic.title,
     videoUrl: ONLINE_SCAMS_VIDEO_URLS[topic.n],
     audioUrl: ONLINE_SCAMS_AUDIO_URLS[topic.n],
   })),
-  '03': DIGITAL_PRIVACY_TOPIC_CONTENT.map((topic) => ({ title: topic.title })),
+  '03': DIGITAL_PRIVACY_TOPIC_CONTENT.map((topic) => ({
+    title: topic.title,
+    videoUrl: DIGITAL_PRIVACY_VIDEO_URLS[topic.n],
+  })),
 };
 
 /**
