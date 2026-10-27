@@ -1,0 +1,3 @@
+# Markdown notes stay on this computer; only the project README is published.
+*.md
+!/README.md
